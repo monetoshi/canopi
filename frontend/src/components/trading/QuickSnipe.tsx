@@ -261,8 +261,6 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
             <option value="instant">⚡ Instant - Buy full amount now</option>
             <option value="limit">📊 Limit Order - Buy at target price</option>
             <option value="dca">💵 DCA In - Split across multiple buys</option>
-            <option value="breakout" disabled>🚀 Breakout - Buy on price spike (coming soon)</option>
-            <option value="dip" disabled>📉 Buy the Dip - Buy on price drops (coming soon)</option>
           </select>
 
           {entryStrategy === 'instant' && (
