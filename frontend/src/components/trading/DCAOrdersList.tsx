@@ -13,6 +13,11 @@ interface DCAOrdersListProps {
 export default function DCAOrdersList({ orders, onUpdate }: DCAOrdersListProps) {
   const [loading, setLoading] = React.useState<string | null>(null);
 
+  // Filter to only show active and paused orders
+  const activeOrders = orders.filter(order =>
+    order.status === 'active' || order.status === 'paused'
+  );
+
   const handlePause = async (orderId: string) => {
     setLoading(orderId);
     try {
@@ -93,7 +98,7 @@ export default function DCAOrdersList({ orders, onUpdate }: DCAOrdersListProps) 
     }
   };
 
-  if (orders.length === 0) {
+  if (activeOrders.length === 0) {
     return (
       <div className="bg-black/40 backdrop-blur-md rounded-xl p-3 border border-gray-800">
         <div className="flex items-center gap-2">
@@ -107,10 +112,10 @@ export default function DCAOrdersList({ orders, onUpdate }: DCAOrdersListProps) 
 
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
-      <h3 className="text-lg font-semibold text-white mb-4">DCA Orders ({orders.length})</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">DCA Orders ({activeOrders.length})</h3>
 
       <div className="space-y-3">
-        {orders.map((order) => (
+        {activeOrders.map((order) => (
           <div
             key={order.id}
             className="bg-gray-900/50 rounded-lg p-4 border border-gray-700"
