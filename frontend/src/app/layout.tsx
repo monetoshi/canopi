@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Canopi - Solana Trading Bot',
-  description: 'Nature-inspired algorithmic trading for Solana with intelligent entry and exit strategies',
+  description: 'Algorithmic trading, elevated. Intelligent entry and exit strategies for Solana with DCA, limit orders, and 15 automated strategies.',
   icons: {
     icon: '/canopi-icon.svg',
     apple: '/canopi-icon.svg',

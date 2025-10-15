@@ -1,7 +1,7 @@
 {
   "name": "canopi-frontend",
   "version": "1.0.0",
-  "description": "Canopi - Nature-inspired Solana trading bot",
+  "description": "Canopi - Algorithmic trading, elevated",
   "private": true,
   "scripts": {
     "dev": "next dev",

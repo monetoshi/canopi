@@ -1,5 +1,7 @@
 # Canopi
 
+**Algorithmic trading, elevated.**
+
 An automated trading bot for Solana with intelligent entry and exit strategies.
 
 ![Canopi Logo](frontend/public/canopi-logo.svg)

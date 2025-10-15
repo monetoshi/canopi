@@ -146,7 +146,7 @@ export default function Home() {
               />
               <div>
                 <h1 className="text-xl font-bold text-white">Canopi</h1>
-                <p className="text-sm text-gray-400">Nature-inspired algorithmic trading</p>
+                <p className="text-sm text-gray-400">Algorithmic trading, elevated</p>
               </div>
             </div>
             <WalletMultiButton />
@@ -164,7 +164,7 @@ export default function Home() {
             />
             <h2 className="text-2xl font-bold text-white mb-2">Welcome to Canopi</h2>
             <p className="text-gray-400 mb-8 max-w-md">
-              Nature-inspired algorithmic trading for Solana. Connect your wallet to start growing your portfolio with intelligent entry and exit strategies.
+              Algorithmic trading, elevated. Connect your wallet to start growing your portfolio with intelligent entry and exit strategies for Solana.
             </p>
             <WalletMultiButton />
           </div>
@@ -301,7 +301,7 @@ export default function Home() {
       <footer className="border-t border-gray-800 bg-black/20 backdrop-blur-md mt-12">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-sm text-gray-400">
-            Canopi - Nature-inspired algorithmic trading for Solana
+            Canopi - Algorithmic trading, elevated
           </p>
         </div>
       </footer>
