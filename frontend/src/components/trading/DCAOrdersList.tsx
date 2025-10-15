@@ -93,7 +93,6 @@ export default function DCAOrdersList({ orders, onUpdate }: DCAOrdersListProps) 
     switch (type) {
       case 'time-based': return '⏰ Time-based';
       case 'price-based': return '📊 Price-based';
-      case 'fixed-split': return '⚖️ Fixed-split';
       default: return type;
     }
   };

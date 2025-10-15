@@ -360,7 +360,6 @@ export class DCAOrderManager {
 
     switch (order.strategyType) {
       case 'time-based':
-      case 'fixed-split':
         // Equal distribution
         return remainingBudget / remainingBuys;
 

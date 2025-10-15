@@ -81,7 +81,7 @@ export interface TradeRequest {
 }
 
 // DCA Types
-export type DCAStrategyType = 'time-based' | 'price-based' | 'fixed-split';
+export type DCAStrategyType = 'time-based' | 'price-based';
 
 export type DCAOrderStatus = 'active' | 'paused' | 'completed' | 'cancelled';
 

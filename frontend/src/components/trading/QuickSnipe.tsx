@@ -325,7 +325,6 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
                   >
                     <option value="time-based">⏰ Time-based - Fixed amounts at intervals</option>
                     <option value="price-based">📊 Price-based - More when price drops</option>
-                    <option value="fixed-split">⚖️ Fixed-split - Equal splits</option>
                   </select>
                   {dcaStrategy === 'price-based' && (
                     <p className="text-xs text-gray-500 mt-1">Buys more when price drops, less when it rises</p>

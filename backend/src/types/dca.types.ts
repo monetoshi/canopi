@@ -10,8 +10,7 @@ import { ExitStrategy } from './index';
  */
 export type DCAStrategyType =
   | 'time-based'    // Buy fixed amount at fixed intervals
-  | 'price-based'   // Buy more when price drops, less when price rises
-  | 'fixed-split';  // Split total equally across N purchases
+  | 'price-based';  // Buy more when price drops, less when price rises
 
 /**
  * DCA Order Configuration
