@@ -306,7 +306,7 @@ export default function Home() {
       <footer className="relative border-t border-gray-800 bg-black/20 backdrop-blur-md mt-12 z-10">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-sm text-gray-400">
-            Canopi - Algorithmic trading, elevated
+            Canopi - Algorithmic trading, elevated - A Monetoshi project
           </p>
         </div>
       </footer>
