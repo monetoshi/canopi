@@ -70,7 +70,7 @@ An automated trading bot for Solana with intelligent entry and exit strategies.
 
 ### Frontend Features
 - **Wallet Integration** - Connect with any Solana wallet (Phantom, Solflare, etc.)
-- **Quick Snipe Interface** - Instant buy with entry strategy selection (Instant/Limit/DCA)
+- **Trading Strategies** - Instant buy with entry strategy selection (Instant/Limit/DCA)
 - **Position Cards** - Live P&L tracking with token logos and manual sell options (25%, 50%, 100%)
 - **Add to Position** - Add more SOL to existing positions with average price recalculation
 - **DCA Order Dashboard** - View, pause, resume, or cancel active DCA orders with progress tracking

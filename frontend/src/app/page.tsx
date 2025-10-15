@@ -89,7 +89,7 @@ export default function Home() {
 
   const handleSelectToken = (mint: string, symbol: string) => {
     setSelectedToken({ mint, symbol });
-    // Scroll to Quick Snipe section (only on client-side)
+    // Scroll to Trading Strategies section (only on client-side)
     if (typeof window !== 'undefined') {
       setTimeout(() => {
         const element = document.getElementById('quick-snipe');
@@ -215,7 +215,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Quick Snipe */}
+              {/* Trading Strategies */}
               <div id="quick-snipe">
                 <QuickSnipe
                   strategies={strategies}

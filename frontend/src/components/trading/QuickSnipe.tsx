@@ -219,7 +219,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
       <div className="flex items-center gap-2 mb-4">
         <Zap className="w-5 h-5 text-emerald-500" />
-        <h3 className="text-lg font-semibold text-white">Quick Snipe</h3>
+        <h3 className="text-lg font-semibold text-white">Trading Strategies</h3>
       </div>
 
       <div className="space-y-4">
