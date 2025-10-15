@@ -69,7 +69,7 @@ export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
       const saved = localStorage.getItem('solana-watchlist');
       if (saved) {
         const tokens = JSON.parse(saved);
-        const mints = new Set(tokens.map((t: any) => t.mint));
+        const mints = new Set<string>(tokens.map((t: any) => t.mint));
         setWatchlistMints(mints);
       }
     } catch (error) {

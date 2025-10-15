@@ -107,13 +107,13 @@ export default function Home() {
   const totalValue = activePositions.reduce((sum, p) => {
     // Since we bought with SOL, the value is essentially the SOL we spent
     // adjusted by the profit/loss percentage
-    const profitMultiplier = 1 + (p.currentProfit / 100);
+    const profitMultiplier = 1 + ((p.currentProfit || 0) / 100);
     const currentValueInSol = p.solSpent * profitMultiplier;
     return sum + currentValueInSol;
   }, 0);
 
   const totalProfit = activePositions.reduce((sum, p) => {
-    const profitMultiplier = 1 + (p.currentProfit / 100);
+    const profitMultiplier = 1 + ((p.currentProfit || 0) / 100);
     const currentValueInSol = p.solSpent * profitMultiplier;
     const cost = p.solSpent;
     return sum + (currentValueInSol - cost);

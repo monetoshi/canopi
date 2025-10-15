@@ -97,6 +97,7 @@ export async function executeBuyTransaction(params: {
   tokenMint: string;
   solAmount: number;
   strategy?: ExitStrategy;
+  expectedOutput?: number;
 }): Promise<{ signature: string; position: Position }> {
   try {
     const response = await api.post<ApiResponse>('/api/snipe/execute', params);
