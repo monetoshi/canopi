@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, Clock, Target } from 'lucide-react';
 import type { Position } from '@/types';
 import { prepareSellTransaction, executeSellTransaction } from '@/lib/api';
 import { VersionedTransaction } from '@solana/web3.js';
+import AddToPositionModal from './AddToPositionModal';
 
 interface PositionCardProps {
   position: Position;
@@ -17,6 +18,7 @@ export default function PositionCard({ position, onSell }: PositionCardProps) {
   const [selling, setSelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const profitPercent = position.currentProfit || 0;
   const isProfit = profitPercent >= 0;
@@ -146,33 +148,52 @@ export default function PositionCard({ position, onSell }: PositionCardProps) {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-3">
+        {/* Sell Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleSell(25)}
+            disabled={selling}
+            className="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+          >
+            Sell 25%
+          </button>
+          <button
+            onClick={() => handleSell(50)}
+            disabled={selling}
+            className="flex-1 px-3 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+          >
+            Sell 50%
+          </button>
+          <button
+            onClick={() => handleSell(100)}
+            disabled={selling}
+            className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+          >
+            Sell All
+          </button>
+        </div>
+
+        {/* Add to Position Button */}
         <button
-          onClick={() => handleSell(25)}
-          disabled={selling}
-          className="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+          onClick={() => setShowAddModal(true)}
+          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
         >
-          Sell 25%
-        </button>
-        <button
-          onClick={() => handleSell(50)}
-          disabled={selling}
-          className="flex-1 px-3 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
-        >
-          Sell 50%
-        </button>
-        <button
-          onClick={() => handleSell(100)}
-          disabled={selling}
-          className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
-        >
-          Sell All
+          + Add to Position
         </button>
       </div>
 
       {selling && (
         <p className="text-xs text-purple-400 mt-2 text-center">Processing transaction...</p>
       )}
+
+      {/* Add to Position Modal */}
+      <AddToPositionModal
+        position={position}
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={onSell}
+      />
     </div>
   );
 }
