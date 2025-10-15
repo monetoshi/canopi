@@ -122,14 +122,18 @@ export class PositionManager {
       throw new Error('Cannot add to closed position');
     }
 
-    // Calculate new weighted average entry price
-    const totalSolSpent = position.solSpent + additionalSolSpent;
+    // Calculate new weighted average entry price (in USD per token)
+    // Old cost in USD = old price * old tokens
+    // New cost in USD = new price * new tokens
+    const oldCost = position.entryPrice * position.tokenAmount;
+    const newCost = newEntryPrice * additionalTokens;
+    const totalCost = oldCost + newCost;
     const totalTokens = position.tokenAmount + additionalTokens;
-    const newAvgEntryPrice = totalSolSpent / totalTokens;
+    const newAvgEntryPrice = totalCost / totalTokens;
 
     // Update position
     position.tokenAmount = totalTokens;
-    position.solSpent = totalSolSpent;
+    position.solSpent = position.solSpent + additionalSolSpent;
     position.entryPrice = newAvgEntryPrice;
 
     // Reset exit stages since position size changed
