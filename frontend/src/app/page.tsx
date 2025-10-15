@@ -18,6 +18,7 @@ import TokenSearch from '@/components/trading/TokenSearch';
 import Watchlist from '@/components/trading/Watchlist';
 import DCAOrdersList from '@/components/trading/DCAOrdersList';
 import PendingDCABuys from '@/components/trading/PendingDCABuys';
+import BackgroundTrees from '@/components/ui/BackgroundTrees';
 
 export default function Home() {
   const { publicKey, connected } = useWallet();
@@ -123,8 +124,9 @@ export default function Home() {
   // Prevent hydration errors by not rendering until mounted
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-slate-900 relative flex items-center justify-center">
+        <BackgroundTrees />
+        <div className="relative z-10 text-center">
           <div className="animate-spin w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-gray-400">Loading...</p>
         </div>
@@ -133,9 +135,12 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-slate-900 relative">
+      {/* Animated Background */}
+      <BackgroundTrees />
+
       {/* Header */}
-      <header className="border-b border-gray-800 bg-black/20 backdrop-blur-md">
+      <header className="relative border-b border-gray-800 bg-black/20 backdrop-blur-md z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -154,7 +159,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="relative container mx-auto px-4 py-8 z-10">
         {!connected ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
             <img
@@ -298,7 +303,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 bg-black/20 backdrop-blur-md mt-12">
+      <footer className="relative border-t border-gray-800 bg-black/20 backdrop-blur-md mt-12 z-10">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-sm text-gray-400">
             Canopi - Algorithmic trading, elevated
