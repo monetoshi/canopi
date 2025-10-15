@@ -1,7 +1,7 @@
 {
-  "name": "solana-trading-bot-backend",
+  "name": "canopi-backend",
   "version": "1.0.0",
-  "description": "Solana Trading Bot Backend API",
+  "description": "Canopi - Trading Bot Backend API",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

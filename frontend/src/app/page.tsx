@@ -123,9 +123,9 @@ export default function Home() {
   // Prevent hydration errors by not rendering until mounted
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="animate-spin w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-gray-400">Loading...</p>
         </div>
       </div>
@@ -133,18 +133,20 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-slate-900">
       {/* Header */}
       <header className="border-b border-gray-800 bg-black/20 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <Activity className="w-6 h-6 text-white" />
-              </div>
+              <img
+                src="/canopi-icon.svg"
+                alt="Canopi"
+                className="w-10 h-10"
+              />
               <div>
-                <h1 className="text-xl font-bold text-white">Solana Trading Bot</h1>
-                <p className="text-sm text-gray-400">Automated trading with smart exit strategies</p>
+                <h1 className="text-xl font-bold text-white">Canopi</h1>
+                <p className="text-sm text-gray-400">Nature-inspired algorithmic trading</p>
               </div>
             </div>
             <WalletMultiButton />
@@ -155,10 +157,14 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8">
         {!connected ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <Wallet className="w-16 h-16 text-purple-400 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome to Solana Trading Bot</h2>
+            <img
+              src="/canopi-logo.svg"
+              alt="Canopi Logo"
+              className="w-32 h-32 mb-6 opacity-90"
+            />
+            <h2 className="text-2xl font-bold text-white mb-2">Welcome to Canopi</h2>
             <p className="text-gray-400 mb-8 max-w-md">
-              Connect your Phantom wallet to start trading with automated exit strategies
+              Nature-inspired algorithmic trading for Solana. Connect your wallet to start growing your portfolio with intelligent entry and exit strategies.
             </p>
             <WalletMultiButton />
           </div>
@@ -223,7 +229,7 @@ export default function Home() {
                   <button
                     onClick={fetchWalletData}
                     disabled={loading}
-                    className="text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50"
+                    className="text-sm text-emerald-500 hover:text-emerald-400 disabled:opacity-50"
                   >
                     {loading ? 'Refreshing...' : 'Refresh'}
                   </button>
@@ -295,7 +301,7 @@ export default function Home() {
       <footer className="border-t border-gray-800 bg-black/20 backdrop-blur-md mt-12">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-sm text-gray-400">
-            Solana Trading Bot - Automated trading with intelligent exit strategies
+            Canopi - Nature-inspired algorithmic trading for Solana
           </p>
         </div>
       </footer>

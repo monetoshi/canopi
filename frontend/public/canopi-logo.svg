@@ -1,0 +1,83 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Canopi Logo - Abstract Tree Canopy (Top-down view) -->
+  <!-- Generative algorithmic branching pattern -->
+
+  <defs>
+    <!-- Gradient for depth -->
+    <radialGradient id="canopyGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#2D5016;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#3E6B1E;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#5A8C2A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7AA841;stop-opacity:0.9" />
+    </radialGradient>
+
+    <!-- Filter for organic texture -->
+    <filter id="organic">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" />
+    </filter>
+  </defs>
+
+  <!-- Central trunk (viewed from above) -->
+  <circle cx="100" cy="100" r="8" fill="#3E362E" opacity="0.9"/>
+
+  <!-- Primary branches (algorithmic pattern) -->
+  <!-- Layer 1 - Innermost -->
+  <path d="M 100 100 Q 100 85, 90 75 Q 80 65, 75 60"
+        stroke="#2D5016" stroke-width="4" fill="none" opacity="0.8"/>
+  <path d="M 100 100 Q 115 85, 125 75 Q 135 65, 140 60"
+        stroke="#2D5016" stroke-width="4" fill="none" opacity="0.8"/>
+  <path d="M 100 100 Q 100 115, 90 125 Q 80 135, 75 140"
+        stroke="#2D5016" stroke-width="4" fill="none" opacity="0.8"/>
+  <path d="M 100 100 Q 115 115, 125 125 Q 135 135, 140 140"
+        stroke="#2D5016" stroke-width="4" fill="none" opacity="0.8"/>
+
+  <!-- Layer 2 - Secondary branches -->
+  <path d="M 100 100 Q 85 90, 70 80 Q 55 70, 45 65"
+        stroke="#3E6B1E" stroke-width="3" fill="none" opacity="0.7"/>
+  <path d="M 100 100 Q 110 85, 120 70 Q 130 55, 135 45"
+        stroke="#3E6B1E" stroke-width="3" fill="none" opacity="0.7"/>
+  <path d="M 100 100 Q 90 110, 80 120 Q 70 130, 65 135"
+        stroke="#3E6B1E" stroke-width="3" fill="none" opacity="0.7"/>
+  <path d="M 100 100 Q 115 110, 130 120 Q 145 130, 155 135"
+        stroke="#3E6B1E" stroke-width="3" fill="none" opacity="0.7"/>
+
+  <!-- Layer 3 - Canopy spread (circular organic shapes) -->
+  <!-- Top-left quadrant -->
+  <ellipse cx="60" cy="50" rx="25" ry="20" fill="#5A8C2A" opacity="0.6" transform="rotate(-15 60 50)"/>
+  <ellipse cx="45" cy="65" rx="20" ry="18" fill="#4A7625" opacity="0.7" transform="rotate(20 45 65)"/>
+  <circle cx="70" cy="70" r="15" fill="#5A8C2A" opacity="0.65"/>
+
+  <!-- Top-right quadrant -->
+  <ellipse cx="140" cy="50" rx="25" ry="20" fill="#5A8C2A" opacity="0.6" transform="rotate(15 140 50)"/>
+  <ellipse cx="155" cy="65" rx="20" ry="18" fill="#4A7625" opacity="0.7" transform="rotate(-20 155 65)"/>
+  <circle cx="130" cy="70" r="15" fill="#5A8C2A" opacity="0.65"/>
+
+  <!-- Bottom-left quadrant -->
+  <ellipse cx="60" cy="150" rx="25" ry="20" fill="#5A8C2A" opacity="0.6" transform="rotate(15 60 150)"/>
+  <ellipse cx="45" cy="135" rx="20" ry="18" fill="#4A7625" opacity="0.7" transform="rotate(-20 45 135)"/>
+  <circle cx="70" cy="130" r="15" fill="#5A8C2A" opacity="0.65"/>
+
+  <!-- Bottom-right quadrant -->
+  <ellipse cx="140" cy="150" rx="25" ry="20" fill="#5A8C2A" opacity="0.6" transform="rotate(-15 140 150)"/>
+  <ellipse cx="155" cy="135" rx="20" ry="18" fill="#4A7625" opacity="0.7" transform="rotate(20 155 135)"/>
+  <circle cx="130" cy="130" r="15" fill="#5A8C2A" opacity="0.65"/>
+
+  <!-- Layer 4 - Outermost canopy leaves -->
+  <circle cx="35" cy="45" r="12" fill="#7AA841" opacity="0.5"/>
+  <circle cx="165" cy="45" r="12" fill="#7AA841" opacity="0.5"/>
+  <circle cx="35" cy="155" r="12" fill="#7AA841" opacity="0.5"/>
+  <circle cx="165" cy="155" r="12" fill="#7AA841" opacity="0.5"/>
+
+  <!-- Additional organic detail -->
+  <circle cx="100" cy="60" r="10" fill="#6B9435" opacity="0.6"/>
+  <circle cx="60" cy="100" r="10" fill="#6B9435" opacity="0.6"/>
+  <circle cx="140" cy="100" r="10" fill="#6B9435" opacity="0.6"/>
+  <circle cx="100" cy="140" r="10" fill="#6B9435" opacity="0.6"/>
+
+  <!-- Subtle fractal details -->
+  <circle cx="85" cy="85" r="6" fill="#8B9D77" opacity="0.4"/>
+  <circle cx="115" cy="85" r="6" fill="#8B9D77" opacity="0.4"/>
+  <circle cx="85" cy="115" r="6" fill="#8B9D77" opacity="0.4"/>
+  <circle cx="115" cy="115" r="6" fill="#8B9D77" opacity="0.4"/>
+</svg>

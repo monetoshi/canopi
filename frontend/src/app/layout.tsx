@@ -6,8 +6,12 @@ import WalletProvider from '@/components/wallet/WalletProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Solana Trading Bot',
-  description: 'Professional Solana trading bot with automated exit strategies',
+  title: 'Canopi - Solana Trading Bot',
+  description: 'Nature-inspired algorithmic trading for Solana with intelligent entry and exit strategies',
+  icons: {
+    icon: '/canopi-icon.svg',
+    apple: '/canopi-icon.svg',
+  },
 }
 
 export default function RootLayout({

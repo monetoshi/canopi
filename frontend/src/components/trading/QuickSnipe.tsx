@@ -218,14 +218,14 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
       <div className="flex items-center gap-2 mb-4">
-        <Zap className="w-5 h-5 text-purple-400" />
+        <Zap className="w-5 h-5 text-emerald-500" />
         <h3 className="text-lg font-semibold text-white">Quick Snipe</h3>
       </div>
 
       <div className="space-y-4">
         <div>
           <label className="block text-sm text-gray-400 mb-2">
-            Token Mint {tokenSymbol && <span className="text-purple-400">({tokenSymbol})</span>}
+            Token Mint {tokenSymbol && <span className="text-emerald-500">({tokenSymbol})</span>}
           </label>
           <input
             type="text"
@@ -235,7 +235,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
               setTokenSymbol('');
             }}
             placeholder="Enter token mint address or search above"
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-600"
           />
         </div>
 
@@ -247,7 +247,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
             onChange={(e) => setSolAmount(e.target.value)}
             step="0.1"
             min="0.01"
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-600"
           />
         </div>
 
@@ -256,7 +256,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
           <select
             value={entryStrategy}
             onChange={(e) => setEntryStrategy(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-600"
           >
             <option value="instant">⚡ Instant - Buy full amount now</option>
             <option value="limit">📊 Limit Order - Buy at target price</option>
@@ -268,7 +268,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
           {entryStrategy === 'instant' && (
             <div className="mt-2 p-2 bg-gray-900/50 rounded border border-gray-700">
               <p className="text-xs text-gray-300">
-                ⚡ <span className="text-purple-400 font-semibold">Instant Entry:</span> Executes buy immediately at market price with your specified SOL amount.
+                ⚡ <span className="text-emerald-500 font-semibold">Instant Entry:</span> Executes buy immediately at market price with your specified SOL amount.
               </p>
             </div>
           )}
@@ -276,7 +276,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
           {entryStrategy === 'limit' && (
             <div className="mt-2 p-2 bg-gray-900/50 rounded border border-gray-700">
               <p className="text-xs text-gray-300 mb-3">
-                📊 <span className="text-purple-400 font-semibold">Limit Order:</span> Automatically buys when price reaches your target.
+                📊 <span className="text-emerald-500 font-semibold">Limit Order:</span> Automatically buys when price reaches your target.
               </p>
 
               <div className="space-y-2">
@@ -314,7 +314,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
           {entryStrategy === 'dca' && (
             <div className="mt-2 p-2 bg-gray-900/50 rounded border border-gray-700">
               <p className="text-xs text-gray-300 mb-3">
-                💵 <span className="text-purple-400 font-semibold">DCA (Dollar Cost Averaging):</span> Splits your purchase across multiple buys over time.
+                💵 <span className="text-emerald-500 font-semibold">DCA (Dollar Cost Averaging):</span> Splits your purchase across multiple buys over time.
               </p>
 
               <div className="space-y-2">
@@ -374,7 +374,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
           <select
             value={strategy}
             onChange={(e) => setStrategy(e.target.value as ExitStrategy)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-600"
           >
             <optgroup label="📋 MANUAL">
               <option value="manual">🎮 Manual Control</option>
@@ -406,7 +406,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
 
           {strategies && strategies[strategy] && (
             <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
-              <p className="text-xs font-semibold text-purple-400 mb-2">
+              <p className="text-xs font-semibold text-emerald-500 mb-2">
                 {strategies[strategy].description}
               </p>
 
@@ -473,7 +473,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
         <button
           onClick={handleBuy}
           disabled={buying || !publicKey}
-          className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all"
+          className="w-full px-4 py-3 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all"
         >
           {buying
             ? 'Processing...'
