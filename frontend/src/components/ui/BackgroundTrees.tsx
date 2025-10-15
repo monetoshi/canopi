@@ -30,31 +30,11 @@ export default function BackgroundTrees() {
             <stop offset="100%" style={{ stopColor: '#5A8C2A', stopOpacity: 0.15 }} />
           </radialGradient>
 
-          {/* Rock gradient */}
-          <linearGradient id="rockGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: '#3E362E', stopOpacity: 0.7 }} />
-            <stop offset="100%" style={{ stopColor: '#2A2420', stopOpacity: 0.9 }} />
-          </linearGradient>
-
           {/* Soft blur for clouds */}
           <filter id="cloudBlur">
             <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
           </filter>
         </defs>
-
-        {/* Background rocks - bottom layer */}
-        <g className="rocks" opacity="0.5">
-          {/* Left rock cluster */}
-          <ellipse cx="10%" cy="85%" rx="80" ry="40" fill="url(#rockGradient)" transform="rotate(-5 10 85)" />
-          <ellipse cx="12%" cy="88%" rx="60" ry="35" fill="url(#rockGradient)" transform="rotate(8 12 88)" />
-
-          {/* Right rock cluster */}
-          <ellipse cx="88%" cy="82%" rx="70" ry="45" fill="url(#rockGradient)" transform="rotate(12 88 82)" />
-          <ellipse cx="90%" cy="86%" rx="55" ry="30" fill="url(#rockGradient)" transform="rotate(-6 90 86)" />
-
-          {/* Center rocks */}
-          <ellipse cx="50%" cy="90%" rx="65" ry="38" fill="url(#rockGradient)" transform="rotate(3 50 90)" />
-        </g>
 
         {/* High altitude clouds - slowest */}
         <g className="clouds-high animate-drift-slow" filter="url(#cloudBlur)">
