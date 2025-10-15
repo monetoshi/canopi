@@ -265,30 +265,49 @@ app.post('/api/snipe/execute', async (req: Request, res: Response) => {
       logger.warn(`No expected output provided, estimated ${tokenAmount} tokens from price`);
     }
 
-    // Create position
-    const position: Position = {
-      mint: tokenMint,
-      walletPublicKey,
-      entryTime: Date.now(),
-      entryPrice: entryPrice || 0,
-      tokenAmount: tokenAmount,
-      solSpent: solAmount,
-      exitStagesCompleted: 0,
-      strategy: (strategy as ExitStrategy) || 'manual',
-      isPercentageBased: strategy === 'hodl1' || strategy === 'hodl2' || strategy === 'hodl3' || strategy === 'swing' || strategy === 'trailing' || strategy === 'takeProfit' || strategy === 'dca',
-      highestProfit: 0,
-      status: 'active',
-      currentPrice: entryPrice || 0,
-      currentProfit: 0
-    };
+    // Check if position already exists
+    const existingPosition = positionManager.getPosition(walletPublicKey, tokenMint);
 
-    positionManager.addPosition(position);
+    if (existingPosition && existingPosition.status === 'active') {
+      // Add to existing position
+      positionManager.addToPosition(
+        walletPublicKey,
+        tokenMint,
+        tokenAmount,
+        solAmount,
+        entryPrice || 0
+      );
+      logger.info(`Added to existing position: ${tokenMint}`);
+    } else {
+      // Create new position
+      const position: Position = {
+        mint: tokenMint,
+        walletPublicKey,
+        entryTime: Date.now(),
+        entryPrice: entryPrice || 0,
+        tokenAmount: tokenAmount,
+        solSpent: solAmount,
+        exitStagesCompleted: 0,
+        strategy: (strategy as ExitStrategy) || 'manual',
+        isPercentageBased: strategy === 'hodl1' || strategy === 'hodl2' || strategy === 'hodl3' || strategy === 'swing' || strategy === 'trailing' || strategy === 'takeProfit' || strategy === 'dca',
+        highestProfit: 0,
+        status: 'active',
+        currentPrice: entryPrice || 0,
+        currentProfit: 0
+      };
+
+      positionManager.addPosition(position);
+      logger.info(`Created new position: ${tokenMint}`);
+    }
+
+    // Get the updated position to return
+    const updatedPosition = positionManager.getPosition(walletPublicKey, tokenMint);
 
     res.json({
       success: true,
       data: {
         signature,
-        position
+        position: updatedPosition
       },
       timestamp: Date.now()
     } as ApiResponse);
