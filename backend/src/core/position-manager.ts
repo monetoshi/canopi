@@ -5,6 +5,7 @@
 
 import { Position, ExitStrategy } from '../types';
 import { getStrategy } from './strategies';
+import { logger } from '../utils/logger.util';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -98,6 +99,45 @@ export class PositionManager {
     const positions = this.positions.get(walletPublicKey);
     if (!positions) return undefined;
     return positions.find(p => p.mint === mint && p.status === 'active');
+  }
+
+  /**
+   * Add to an existing position by merging a new buy
+   * Recalculates average entry price and updates position totals
+   */
+  public addToPosition(
+    walletPublicKey: string,
+    mint: string,
+    additionalTokens: number,
+    additionalSolSpent: number,
+    newEntryPrice: number
+  ): void {
+    const position = this.getPosition(walletPublicKey, mint);
+
+    if (!position) {
+      throw new Error('Position not found');
+    }
+
+    if (position.status !== 'active') {
+      throw new Error('Cannot add to closed position');
+    }
+
+    // Calculate new weighted average entry price
+    const totalSolSpent = position.solSpent + additionalSolSpent;
+    const totalTokens = position.tokenAmount + additionalTokens;
+    const newAvgEntryPrice = totalSolSpent / totalTokens;
+
+    // Update position
+    position.tokenAmount = totalTokens;
+    position.solSpent = totalSolSpent;
+    position.entryPrice = newAvgEntryPrice;
+
+    // Reset exit stages since position size changed
+    position.exitStagesCompleted = 0;
+
+    this.savePositions();
+
+    logger.info(`Added to position: ${mint} - New total: ${totalTokens} tokens, Avg entry: ${newAvgEntryPrice}`);
   }
 
   /**
