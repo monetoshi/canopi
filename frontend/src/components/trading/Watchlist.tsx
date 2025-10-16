@@ -125,56 +125,56 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
   // Prevent hydration errors by not rendering until mounted
   if (!mounted) {
     return (
-      <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
-        <div className="flex items-center gap-2 mb-4">
-          <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-          <h3 className="text-lg font-semibold text-white">Watchlist</h3>
+      <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border border-gray-800">
+        <div className="flex items-center gap-2 mb-3">
+          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+          <h3 className="text-base font-semibold text-white">Watchlist</h3>
         </div>
-        <div className="text-center py-12">
-          <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-3"></div>
-          <p className="text-gray-400">Loading watchlist...</p>
+        <div className="text-center py-8">
+          <div className="animate-spin w-6 h-6 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+          <p className="text-gray-400 text-sm">Loading watchlist...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border border-gray-800">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-          <h3 className="text-lg font-semibold text-white">Watchlist</h3>
-          <span className="text-sm text-gray-400">({watchlist.length} tokens)</span>
+          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+          <h3 className="text-base font-semibold text-white">Watchlist</h3>
+          <span className="text-xs text-gray-400">({watchlist.length})</span>
         </div>
         <button
           onClick={refreshPrices}
           disabled={loading || watchlist.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs rounded-lg transition-colors"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
 
       {watchlist.length === 0 ? (
-        <div className="text-center py-12">
-          <Star className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400">No tokens in watchlist</p>
-          <p className="text-sm text-gray-500 mt-1">
-            Click the star icon on any token to add it to your watchlist
+        <div className="text-center py-8">
+          <Star className="w-10 h-10 text-gray-600 mx-auto mb-2" />
+          <p className="text-gray-400 text-sm">No tokens in watchlist</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Click the star icon on any token to add it
           </p>
         </div>
       ) : (
-        <div className="space-y-3 max-h-[500px] overflow-y-auto">
+        <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {watchlist.map((token) => (
             <div
               key={token.mint}
-              className="bg-gray-900/50 rounded-lg p-4 border border-gray-800 hover:border-purple-500/50 transition-all"
+              className="bg-gray-900/50 rounded-lg p-2.5 border border-gray-800 hover:border-purple-500/50 transition-all"
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-white font-semibold">{token.symbol}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-white font-semibold text-sm">{token.symbol}</h4>
                     <span className="text-xs text-gray-400">{token.name}</span>
                     <a
                       href={`https://dexscreener.com/solana/${token.mint}`}
@@ -182,10 +182,10 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
                       rel="noopener noreferrer"
                       className="text-purple-400 hover:text-purple-300"
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   </div>
-                  <p className="text-xs font-mono text-gray-500">
+                  <p className="text-xs font-mono text-gray-500 mt-0.5">
                     {token.mint.slice(0, 6)}...{token.mint.slice(-4)}
                   </p>
                 </div>
@@ -193,13 +193,13 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
                 <div className="text-right">
                   {token.currentPrice !== undefined ? (
                     <>
-                      <p className="text-white font-semibold">
+                      <p className="text-white font-semibold text-sm">
                         ${token.currentPrice < 0.01
                           ? token.currentPrice.toFixed(8)
                           : token.currentPrice.toFixed(4)}
                       </p>
                       {token.priceChange24h !== undefined && (
-                        <p className={`text-sm font-semibold flex items-center gap-1 justify-end ${
+                        <p className={`text-xs font-semibold flex items-center gap-1 justify-end ${
                           token.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
                           {token.priceChange24h >= 0 ? (
@@ -212,31 +212,31 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
                       )}
                     </>
                   ) : (
-                    <p className="text-gray-500 text-sm">Price unavailable</p>
+                    <p className="text-gray-500 text-xs">Price unavailable</p>
                   )}
                 </div>
               </div>
 
               {token.liquidity !== undefined && (
-                <div className="mb-3 text-xs text-gray-400">
+                <div className="mb-2 text-xs text-gray-400">
                   Liquidity: <span className="text-white font-semibold">{formatNumber(token.liquidity)}</span>
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-3 border-t border-gray-800">
+              <div className="flex items-center justify-between pt-2 border-t border-gray-800">
                 <span className="text-xs text-gray-500">
-                  Added {new Date(token.addedAt).toLocaleDateString()}
+                  {new Date(token.addedAt).toLocaleDateString()}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button
                     onClick={() => onSelectToken(token.mint, token.symbol)}
-                    className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-semibold rounded-lg transition-all"
+                    className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-semibold rounded-lg transition-all"
                   >
                     Trade
                   </button>
                   <button
                     onClick={() => removeFromWatchlist(token.mint)}
-                    className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
                     Remove
