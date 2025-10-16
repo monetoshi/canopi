@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Bell, TrendingUp, AlertCircle } from 'lucide-react';
 import type { PendingDCABuy } from '@/types';
 import { prepareBuyTransaction, executeDCABuy, getCurrentPrice } from '@/lib/api';
@@ -14,6 +14,7 @@ interface PendingDCABuysProps {
 
 export default function PendingDCABuys({ pendingBuys, onUpdate }: PendingDCABuysProps) {
   const { publicKey, signTransaction } = useWallet();
+  const { connection } = useConnection();
   const [executing, setExecuting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +43,15 @@ export default function PendingDCABuys({ pendingBuys, onUpdate }: PendingDCABuys
 
       // Sign transaction
       const signedTx = await signTransaction(transaction);
-      const signature = await window.solana.sendTransaction(signedTx);
+
+      // Send signed transaction
+      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3
+      });
+
+      // Confirm transaction
+      await connection.confirmTransaction(signature, 'confirmed');
 
       // Get actual price
       const actualPrice = await getCurrentPrice(buy.tokenMint) || buy.currentPrice;
