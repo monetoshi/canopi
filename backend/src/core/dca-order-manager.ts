@@ -110,7 +110,7 @@ export class DCAOrderManager {
       currentBuy: 0,
       status: 'active',
       createdAt: now,
-      nextBuyAt: now + (params.intervalMinutes * 60000), // First buy after interval
+      nextBuyAt: now, // First buy immediately
       completedBuys: [],
       referencePrice: params.referencePrice
     };
