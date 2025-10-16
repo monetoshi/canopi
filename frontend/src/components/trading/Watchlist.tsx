@@ -165,82 +165,61 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-[500px] overflow-y-auto">
+        <div className="space-y-1 max-h-[500px] overflow-y-auto">
           {watchlist.map((token) => (
             <div
               key={token.mint}
-              className="bg-gray-900/50 rounded-lg p-2.5 border border-gray-800 hover:border-purple-500/50 transition-all"
+              className="bg-gray-900/50 rounded p-1.5 border border-gray-800 hover:border-purple-500/50 transition-all"
             >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-white font-semibold text-sm">{token.symbol}</h4>
-                    <span className="text-xs text-gray-400">{token.name}</span>
-                    <a
-                      href={`https://dexscreener.com/solana/${token.mint}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-purple-400 hover:text-purple-300"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                  <p className="text-xs font-mono text-gray-500 mt-0.5">
-                    {token.mint.slice(0, 6)}...{token.mint.slice(-4)}
-                  </p>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <h4 className="text-white font-semibold text-xs">{token.symbol}</h4>
+                  <a
+                    href={`https://dexscreener.com/solana/${token.mint}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-400 hover:text-purple-300 flex-shrink-0"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
 
-                <div className="text-right">
+                <div className="flex items-center gap-3">
                   {token.currentPrice !== undefined ? (
-                    <>
-                      <p className="text-white font-semibold text-sm">
+                    <div className="text-right">
+                      <p className="text-white font-semibold text-xs whitespace-nowrap">
                         ${token.currentPrice < 0.01
                           ? token.currentPrice.toFixed(8)
                           : token.currentPrice.toFixed(4)}
                       </p>
-                      {token.priceChange24h !== undefined && (
-                        <p className={`text-xs font-semibold flex items-center gap-1 justify-end ${
-                          token.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {token.priceChange24h >= 0 ? (
-                            <TrendingUp className="w-3 h-3" />
-                          ) : (
-                            <TrendingDown className="w-3 h-3" />
-                          )}
-                          {token.priceChange24h >= 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}%
-                        </p>
-                      )}
-                    </>
+                    </div>
                   ) : (
-                    <p className="text-gray-500 text-xs">Price unavailable</p>
+                    <p className="text-gray-500 text-xs">N/A</p>
                   )}
-                </div>
-              </div>
 
-              {token.liquidity !== undefined && (
-                <div className="mb-2 text-xs text-gray-400">
-                  Liquidity: <span className="text-white font-semibold">{formatNumber(token.liquidity)}</span>
-                </div>
-              )}
+                  {token.priceChange24h !== undefined && (
+                    <div className={`text-xs font-semibold w-12 text-right ${
+                      token.priceChange24h >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {token.priceChange24h >= 0 ? '+' : ''}{token.priceChange24h.toFixed(1)}%
+                    </div>
+                  )}
 
-              <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-                <span className="text-xs text-gray-500">
-                  {new Date(token.addedAt).toLocaleDateString()}
-                </span>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => onSelectToken(token.mint, token.symbol)}
-                    className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    Trade
-                  </button>
-                  <button
-                    onClick={() => removeFromWatchlist(token.mint)}
-                    className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Remove
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => onSelectToken(token.mint, token.symbol)}
+                      className="px-2 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-semibold rounded transition-all"
+                    >
+                      Trade
+                    </button>
+                    <button
+                      onClick={() => removeFromWatchlist(token.mint)}
+                      className="p-0.5 hover:bg-red-600/30 text-red-400 rounded transition-all"
+                      title="Remove"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
