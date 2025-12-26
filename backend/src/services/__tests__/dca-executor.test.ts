@@ -23,7 +23,7 @@ describe('DCAExecutor', () => {
   const mockWalletPublicKey = '2KrVQg1GFW2Q4wsARdi5fVpsaNXVETPp15YLZCG2uKJu';
   const mockTokenMint = '8avjtjHAHFqp4g2RR9ALAGBpSTqKPZR8nRbzSTwZERA';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks
     jest.clearAllMocks();
     jest.useFakeTimers();
@@ -39,7 +39,7 @@ describe('DCAExecutor', () => {
 
     // Clear managers
     (dcaOrderManager as any).orders.clear();
-    positionManager.clear();
+    await positionManager.clear();
   });
 
   afterEach(() => {
@@ -48,33 +48,33 @@ describe('DCAExecutor', () => {
   });
 
   describe('Service Lifecycle', () => {
-    test('should start executor', () => {
+    test('should start executor', async () => {
       executor.start();
       const status = executor.getStatus();
       expect(status.isRunning).toBe(true);
     });
 
-    test('should not start twice', () => {
+    test('should not start twice', async () => {
       executor.start();
       executor.start(); // Should not throw or cause issues
       const status = executor.getStatus();
       expect(status.isRunning).toBe(true);
     });
 
-    test('should stop executor', () => {
+    test('should stop executor', async () => {
       executor.start();
       executor.stop();
       const status = executor.getStatus();
       expect(status.isRunning).toBe(false);
     });
 
-    test('should check orders immediately on start', () => {
+    test('should check orders immediately on start', async () => {
       const checkSpy = jest.spyOn(executor as any, 'checkOrders');
       executor.start();
       expect(checkSpy).toHaveBeenCalled();
     });
 
-    test('should check orders on interval', () => {
+    test('should check orders on interval', async () => {
       const checkSpy = jest.spyOn(executor as any, 'checkOrders');
       executor.start();
 
@@ -85,7 +85,7 @@ describe('DCAExecutor', () => {
   });
 
   describe('Pending Buy Creation', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // Mock price fetch
       mockAxios.get.mockResolvedValue({
         data: {
@@ -99,7 +99,7 @@ describe('DCAExecutor', () => {
 
     test('should create pending buy for ready order', async () => {
       // Create DCA order that's ready
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         tokenSymbol: 'ZERA',
@@ -128,7 +128,7 @@ describe('DCAExecutor', () => {
 
     test('should not create pending buy for order not ready', async () => {
       // Create DCA order that's not ready yet
-      dcaOrderManager.createOrder({
+      await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -152,7 +152,7 @@ describe('DCAExecutor', () => {
         data: { pairs: [] }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -171,7 +171,7 @@ describe('DCAExecutor', () => {
     });
 
     test('should calculate correct buy amount for time-based strategy', async () => {
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -190,7 +190,7 @@ describe('DCAExecutor', () => {
     });
 
     test('should calculate correct buy amount for price-based strategy', async () => {
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'price-based',
@@ -225,7 +225,7 @@ describe('DCAExecutor', () => {
         }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         tokenSymbol: 'ZERA',
@@ -243,7 +243,7 @@ describe('DCAExecutor', () => {
     });
 
     test('should execute pending buy successfully', async () => {
-      const success = await executor.executeBuy(
+      const success = await await executor.executeBuy(
         orderId,
         1,
         'sig123',
@@ -262,7 +262,7 @@ describe('DCAExecutor', () => {
     });
 
     test('should create position on first buy', async () => {
-      await executor.executeBuy(
+      await await executor.executeBuy(
         orderId,
         1,
         'sig123',
@@ -280,7 +280,7 @@ describe('DCAExecutor', () => {
 
     test('should update position on subsequent buy', async () => {
       // First buy
-      await executor.executeBuy(orderId, 1, 'sig1', 40.0, 0.2, 0.005);
+      await await executor.executeBuy(orderId, 1, 'sig1', 40.0, 0.2, 0.005);
 
       // Create second pending buy
       const order = dcaOrderManager.getOrder(orderId)!;
@@ -288,7 +288,7 @@ describe('DCAExecutor', () => {
       await (executor as any).checkOrders();
 
       // Second buy
-      await executor.executeBuy(orderId, 2, 'sig2', 50.0, 0.2, 0.004);
+      await await executor.executeBuy(orderId, 2, 'sig2', 50.0, 0.2, 0.004);
 
       const position = positionManager.getPosition(mockWalletPublicKey, mockTokenMint);
       expect(position?.tokenAmount).toBe(90.0); // 40 + 50
@@ -297,14 +297,14 @@ describe('DCAExecutor', () => {
     });
 
     test('should remove pending buy after execution', async () => {
-      await executor.executeBuy(orderId, 1, 'sig123', 40.0, 0.2, 0.005);
+      await await executor.executeBuy(orderId, 1, 'sig123', 40.0, 0.2, 0.005);
 
       const pendingBuy = executor.getPendingBuy(orderId, 1);
       expect(pendingBuy).toBeUndefined();
     });
 
     test('should return false for non-existent pending buy', async () => {
-      const success = await executor.executeBuy(
+      const success = await await executor.executeBuy(
         'non-existent',
         1,
         'sig123',
@@ -320,7 +320,7 @@ describe('DCAExecutor', () => {
       // Clear the order
       (dcaOrderManager as any).orders.clear();
 
-      const success = await executor.executeBuy(
+      const success = await await executor.executeBuy(
         orderId,
         1,
         'sig123',
@@ -346,7 +346,7 @@ describe('DCAExecutor', () => {
 
       // Create multiple ready orders
       for (let i = 0; i < 3; i++) {
-        const order = dcaOrderManager.createOrder({
+        const order = await dcaOrderManager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'time-based',
@@ -374,7 +374,7 @@ describe('DCAExecutor', () => {
         }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -403,7 +403,7 @@ describe('DCAExecutor', () => {
         }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -423,7 +423,7 @@ describe('DCAExecutor', () => {
       expect(pendingBuy).toBeUndefined();
     });
 
-    test('should return false when cancelling non-existent buy', () => {
+    test('should return false when cancelling non-existent buy', async () => {
       const cancelled = executor.cancelPendingBuy('non-existent', 1);
       expect(cancelled).toBe(false);
     });
@@ -438,7 +438,7 @@ describe('DCAExecutor', () => {
         }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -471,7 +471,7 @@ describe('DCAExecutor', () => {
   });
 
   describe('Status Reporting', () => {
-    test('should return correct status when stopped', () => {
+    test('should return correct status when stopped', async () => {
       const status = executor.getStatus();
       expect(status.isRunning).toBe(false);
       expect(status.checkInterval).toBe(60000);
@@ -479,14 +479,14 @@ describe('DCAExecutor', () => {
       expect(status.pendingBuys).toBe(0);
     });
 
-    test('should return correct status when running', () => {
+    test('should return correct status when running', async () => {
       executor.start();
       const status = executor.getStatus();
       expect(status.isRunning).toBe(true);
     });
 
-    test('should report active orders count', () => {
-      dcaOrderManager.createOrder({
+    test('should report active orders count', async () => {
+      await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -496,7 +496,7 @@ describe('DCAExecutor', () => {
         exitStrategy: 'aggressive'
       });
 
-      dcaOrderManager.createOrder({
+      await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -520,7 +520,7 @@ describe('DCAExecutor', () => {
         }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         tokenSymbol: 'ZERA',
@@ -612,7 +612,7 @@ describe('DCAExecutor', () => {
     test('should continue on price fetch error', async () => {
       mockAxios.get.mockRejectedValue(new Error('Network error'));
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -649,7 +649,7 @@ describe('DCAExecutor', () => {
         }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -681,7 +681,7 @@ describe('DCAExecutor', () => {
         });
       }
 
-      await executor.executeBuy(order.id, 1, 'sig1', 40.0, 0.2, 0.005);
+      await await executor.executeBuy(order.id, 1, 'sig1', 40.0, 0.2, 0.005);
 
       // Verify integration with DCAOrderManager
       const updatedOrder = dcaOrderManager.getOrder(order.id);
@@ -699,7 +699,7 @@ describe('DCAExecutor', () => {
         }
       });
 
-      const order = dcaOrderManager.createOrder({
+      const order = await dcaOrderManager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -724,7 +724,7 @@ describe('DCAExecutor', () => {
       });
 
       // Execute the buy
-      await executor.executeBuy(order.id, 1, 'sig1', 40.0, 0.2, 0.005);
+      await await executor.executeBuy(order.id, 1, 'sig1', 40.0, 0.2, 0.005);
 
       // Verify position created
       const allPositions = positionManager.getAllPositions();

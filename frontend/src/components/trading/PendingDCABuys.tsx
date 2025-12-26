@@ -19,7 +19,14 @@ export default function PendingDCABuys({ pendingBuys, onUpdate }: PendingDCABuys
   const [error, setError] = useState<string | null>(null);
 
   const handleExecuteBuy = async (buy: PendingDCABuy) => {
+    console.log('[PendingDCABuy] ========== EXECUTE BUY STARTED ==========');
+    console.log('[PendingDCABuy] Order ID:', buy.orderId);
+    console.log('[PendingDCABuy] Buy Number:', buy.buyNumber);
+    console.log('[PendingDCABuy] Token:', buy.tokenMint.slice(0, 8));
+    console.log('[PendingDCABuy] SOL Amount:', buy.solAmount);
+
     if (!publicKey || !signTransaction) {
+      console.log('[PendingDCABuy] ❌ Wallet not connected');
       setError('Wallet not connected');
       return;
     }
@@ -29,6 +36,7 @@ export default function PendingDCABuys({ pendingBuys, onUpdate }: PendingDCABuys
 
     try {
       // Prepare buy transaction
+      console.log('[PendingDCABuy] Step 1: Preparing buy transaction...');
       const data = await prepareBuyTransaction({
         walletPublicKey: publicKey.toString(),
         tokenMint: buy.tokenMint,
@@ -36,30 +44,51 @@ export default function PendingDCABuys({ pendingBuys, onUpdate }: PendingDCABuys
         slippageBps: buy.slippageBps,
         strategy: buy.exitStrategy as any
       });
+      console.log('[PendingDCABuy] ✓ Transaction prepared. Expected output:', data.expectedOutput);
 
       // Deserialize transaction
+      console.log('[PendingDCABuy] Step 2: Deserializing transaction...');
       const txBuffer = Buffer.from(data.transaction, 'base64');
       const transaction = VersionedTransaction.deserialize(txBuffer);
+      console.log('[PendingDCABuy] ✓ Transaction deserialized');
 
       // Sign transaction
+      console.log('[PendingDCABuy] Step 3: Requesting wallet signature...');
       const signedTx = await signTransaction(transaction);
+      console.log('[PendingDCABuy] ✓ Transaction signed');
 
       // Send signed transaction
+      console.log('[PendingDCABuy] Step 4: Sending transaction to blockchain...');
       const signature = await connection.sendRawTransaction(signedTx.serialize(), {
         skipPreflight: false,
         maxRetries: 3
       });
+      console.log('[PendingDCABuy] ✓ Transaction sent. Signature:', signature);
 
       // Confirm transaction
+      console.log('[PendingDCABuy] Step 5: Waiting for confirmation...');
       await connection.confirmTransaction(signature, 'confirmed');
+      console.log('[PendingDCABuy] ✓ Transaction confirmed');
 
       // Get actual price
+      console.log('[PendingDCABuy] Step 6: Getting actual price...');
       const actualPrice = await getCurrentPrice(buy.tokenMint) || buy.currentPrice;
+      console.log('[PendingDCABuy] ✓ Actual price:', actualPrice);
 
       // Calculate actual token amount from quote
       const actualTokenAmount = Number(data.expectedOutput) || buy.estimatedTokenAmount;
+      console.log('[PendingDCABuy] Actual token amount:', actualTokenAmount);
 
       // Record DCA buy execution
+      console.log('[PendingDCABuy] Step 7: Recording DCA buy execution in backend...');
+      console.log('[PendingDCABuy] Calling executeDCABuy with:', {
+        orderId: buy.orderId,
+        buyNumber: buy.buyNumber,
+        signature,
+        actualTokenAmount,
+        actualSolSpent: buy.solAmount,
+        actualPrice
+      });
       await executeDCABuy({
         orderId: buy.orderId,
         buyNumber: buy.buyNumber,
@@ -68,11 +97,17 @@ export default function PendingDCABuys({ pendingBuys, onUpdate }: PendingDCABuys
         actualSolSpent: buy.solAmount,
         actualPrice
       });
+      console.log('[PendingDCABuy] ✓ DCA buy recorded in backend');
 
       // Refresh data
+      console.log('[PendingDCABuy] Step 8: Refreshing UI data...');
       onUpdate();
+      console.log('[PendingDCABuy] ========== EXECUTE BUY COMPLETED ==========');
     } catch (err: any) {
-      console.error('Error executing DCA buy:', err);
+      console.error('[PendingDCABuy] ❌ ERROR at some step:');
+      console.error('[PendingDCABuy] Error message:', err.message);
+      console.error('[PendingDCABuy] Error details:', err);
+      console.error('[PendingDCABuy] Error stack:', err.stack);
       setError(err.message || 'Failed to execute buy');
     } finally {
       setExecuting(null);

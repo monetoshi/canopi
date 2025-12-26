@@ -50,6 +50,8 @@ export interface DCAOrder {
   completedBuys: DCABuyExecution[];
   /** Reference price for price-based DCA */
   referencePrice?: number;
+  /** Whether the DCA order is executed privately */
+  isPrivate?: boolean;
 }
 
 /**
@@ -70,6 +72,8 @@ export interface DCABuyExecution {
   signature: string;
   /** Position mint created */
   positionMint: string;
+  /** Wallet used for execution (if private) */
+  executionWallet?: string;
 }
 
 /**

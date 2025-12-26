@@ -19,7 +19,7 @@ describe('LimitOrderManager', () => {
   const mockWalletPublicKey = '2KrVQg1GFW2Q4wsARdi5fVpsaNXVETPp15YLZCG2uKJu';
   const mockTokenMint = '8avjtjHAHFqp4g2RR9ALAGBpSTqKPZR8nRbzSTwZERA';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks before each test
     jest.clearAllMocks();
 
@@ -34,8 +34,8 @@ describe('LimitOrderManager', () => {
   });
 
   describe('Order Creation', () => {
-    test('should create a new limit order with required fields', () => {
-      const order = manager.createOrder({
+    test('should create a new limit order with required fields', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         tokenSymbol: 'ZERA',
@@ -60,8 +60,8 @@ describe('LimitOrderManager', () => {
       expect(order.expiresAt).toBeDefined();
     });
 
-    test('should create order without expiration when expiresIn not provided', () => {
-      const order = manager.createOrder({
+    test('should create order without expiration when expiresIn not provided', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -72,8 +72,8 @@ describe('LimitOrderManager', () => {
       expect(order.expiresAt).toBeUndefined();
     });
 
-    test('should use default slippage of 200 bps when not provided', () => {
-      const order = manager.createOrder({
+    test('should use default slippage of 200 bps when not provided', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -84,8 +84,8 @@ describe('LimitOrderManager', () => {
       expect(order.slippageBps).toBe(200);
     });
 
-    test('should save order to disk after creation', () => {
-      manager.createOrder({
+    test('should save order to disk after creation', async () => {
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -98,9 +98,9 @@ describe('LimitOrderManager', () => {
   });
 
   describe('Order Retrieval', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // Create some test orders
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -108,7 +108,7 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'manual' as ExitStrategy
       });
 
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: 'DifferentToken123',
         targetPrice: 0.05,
@@ -116,7 +116,7 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'aggressive' as ExitStrategy
       });
 
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: 'DifferentWallet123',
         tokenMint: mockTokenMint,
         targetPrice: 0.03,
@@ -125,25 +125,25 @@ describe('LimitOrderManager', () => {
       });
     });
 
-    test('should get all orders', () => {
+    test('should get all orders', async () => {
       const orders = manager.getAllOrders();
       expect(orders).toHaveLength(3);
     });
 
-    test('should get orders by wallet address', () => {
+    test('should get orders by wallet address', async () => {
       const orders = manager.getOrdersByWallet(mockWalletPublicKey);
       expect(orders).toHaveLength(2);
       expect(orders.every(o => o.walletPublicKey === mockWalletPublicKey)).toBe(true);
     });
 
-    test('should get pending orders for specific token', () => {
+    test('should get pending orders for specific token', async () => {
       const orders = manager.getPendingOrdersForToken(mockTokenMint);
       expect(orders).toHaveLength(2);
       expect(orders.every(o => o.tokenMint === mockTokenMint && o.status === 'pending')).toBe(true);
     });
 
-    test('should get order by ID', () => {
-      const createdOrder = manager.createOrder({
+    test('should get order by ID', async () => {
+      const createdOrder = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -156,7 +156,7 @@ describe('LimitOrderManager', () => {
       expect(retrievedOrder?.id).toBe(createdOrder.id);
     });
 
-    test('should return undefined for non-existent order ID', () => {
+    test('should return undefined for non-existent order ID', async () => {
       const order = manager.getOrder('non-existent-id');
       expect(order).toBeUndefined();
     });
@@ -165,8 +165,8 @@ describe('LimitOrderManager', () => {
   describe('Order Status Management', () => {
     let orderId: string;
 
-    beforeEach(() => {
-      const order = manager.createOrder({
+    beforeEach(async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -176,17 +176,17 @@ describe('LimitOrderManager', () => {
       orderId = order.id;
     });
 
-    test('should update order status', () => {
-      const success = manager.updateOrderStatus(orderId, 'executing');
+    test('should update order status', async () => {
+      const success = await manager.updateOrderStatus(orderId, 'executing');
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('executing');
     });
 
-    test('should update order status with signature', () => {
+    test('should update order status with signature', async () => {
       const signature = '5XYZabc123...';
-      const success = manager.updateOrderStatus(orderId, 'filled', signature);
+      const success = await manager.updateOrderStatus(orderId, 'filled', signature);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
@@ -194,19 +194,19 @@ describe('LimitOrderManager', () => {
       expect(order?.signature).toBe(signature);
     });
 
-    test('should mark order as executing', () => {
-      const success = manager.markExecuting(orderId);
+    test('should mark order as executing', async () => {
+      const success = await manager.markExecuting(orderId);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('executing');
     });
 
-    test('should mark order as filled with signature and position mint', () => {
+    test('should mark order as filled with signature and position mint', async () => {
       const signature = '5XYZabc123...';
       const positionMint = mockTokenMint;
 
-      const success = manager.markFilled(orderId, signature, positionMint);
+      const success = await manager.markFilled(orderId, signature, positionMint);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
@@ -215,8 +215,8 @@ describe('LimitOrderManager', () => {
       expect(order?.positionMint).toBe(positionMint);
     });
 
-    test('should return false when updating non-existent order', () => {
-      const success = manager.updateOrderStatus('non-existent-id', 'filled');
+    test('should return false when updating non-existent order', async () => {
+      const success = await manager.updateOrderStatus('non-existent-id', 'filled');
       expect(success).toBe(false);
     });
   });
@@ -224,8 +224,8 @@ describe('LimitOrderManager', () => {
   describe('Order Cancellation', () => {
     let orderId: string;
 
-    beforeEach(() => {
-      const order = manager.createOrder({
+    beforeEach(async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -235,26 +235,26 @@ describe('LimitOrderManager', () => {
       orderId = order.id;
     });
 
-    test('should cancel pending order', () => {
-      const success = manager.cancelOrder(orderId);
+    test('should cancel pending order', async () => {
+      const success = await manager.cancelOrder(orderId);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('cancelled');
     });
 
-    test('should not cancel executing order', () => {
-      manager.markExecuting(orderId);
+    test('should not cancel executing order', async () => {
+      await manager.markExecuting(orderId);
 
-      const success = manager.cancelOrder(orderId);
+      const success = await manager.cancelOrder(orderId);
       expect(success).toBe(false);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('executing');
     });
 
-    test('should return false when cancelling non-existent order', () => {
-      const success = manager.cancelOrder('non-existent-id');
+    test('should return false when cancelling non-existent order', async () => {
+      const success = await manager.cancelOrder('non-existent-id');
       expect(success).toBe(false);
     });
   });
@@ -262,8 +262,8 @@ describe('LimitOrderManager', () => {
   describe('Order Execution Logic', () => {
     let order: any;
 
-    beforeEach(() => {
-      order = manager.createOrder({
+    beforeEach(async () => {
+      order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -273,42 +273,42 @@ describe('LimitOrderManager', () => {
       });
     });
 
-    test('should execute order when current price is below target price', () => {
-      const shouldExecute = manager.shouldExecuteOrder(order, 0.024);
+    test('should execute order when current price is below target price', async () => {
+      const shouldExecute = await manager.shouldExecuteOrder(order, 0.024);
       expect(shouldExecute).toBe(true);
     });
 
-    test('should execute order when current price equals target price', () => {
-      const shouldExecute = manager.shouldExecuteOrder(order, 0.025);
+    test('should execute order when current price equals target price', async () => {
+      const shouldExecute = await manager.shouldExecuteOrder(order, 0.025);
       expect(shouldExecute).toBe(true);
     });
 
-    test('should not execute order when current price is above target price', () => {
-      const shouldExecute = manager.shouldExecuteOrder(order, 0.026);
+    test('should not execute order when current price is above target price', async () => {
+      const shouldExecute = await manager.shouldExecuteOrder(order, 0.026);
       expect(shouldExecute).toBe(false);
     });
 
-    test('should not execute order that is not pending', () => {
-      manager.markExecuting(order.id);
-      const shouldExecute = manager.shouldExecuteOrder(order, 0.024);
+    test('should not execute order that is not pending', async () => {
+      await manager.markExecuting(order.id);
+      const shouldExecute = await manager.shouldExecuteOrder(order, 0.024);
       expect(shouldExecute).toBe(false);
     });
 
-    test('should not execute expired order', () => {
+    test('should not execute expired order', async () => {
       // Mock Date.now to make order expired
       const mockNow = order.expiresAt + 1000;
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
 
-      const shouldExecute = manager.shouldExecuteOrder(order, 0.024);
+      const shouldExecute = await manager.shouldExecuteOrder(order, 0.024);
       expect(shouldExecute).toBe(false);
 
       const updatedOrder = manager.getOrder(order.id);
       expect(updatedOrder?.status).toBe('expired');
     });
 
-    test('should get executable orders for token', () => {
+    test('should get executable orders for token', async () => {
       // Create multiple orders
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.03,
@@ -316,7 +316,7 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'manual' as ExitStrategy
       });
 
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.02,
@@ -324,7 +324,7 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'manual' as ExitStrategy
       });
 
-      const executableOrders = manager.getExecutableOrders(mockTokenMint, 0.025);
+      const executableOrders = await manager.getExecutableOrders(mockTokenMint, 0.025);
 
       // Should get orders with target price >= 0.025
       expect(executableOrders.length).toBeGreaterThan(0);
@@ -333,9 +333,9 @@ describe('LimitOrderManager', () => {
   });
 
   describe('Order Cleanup', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // Create orders with different statuses
-      const order1 = manager.createOrder({
+      const order1 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -343,7 +343,7 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'manual' as ExitStrategy
       });
 
-      const order2 = manager.createOrder({
+      const order2 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.03,
@@ -352,26 +352,26 @@ describe('LimitOrderManager', () => {
       });
 
       // Mark orders with different statuses
-      manager.markFilled(order1.id, 'sig1', mockTokenMint);
-      manager.cancelOrder(order2.id);
+      await manager.markFilled(order1.id, 'sig1', mockTokenMint);
+      await manager.cancelOrder(order2.id);
     });
 
-    test('should clean up old filled and cancelled orders', () => {
+    test('should clean up old filled and cancelled orders', async () => {
       // Mock Date.now to make orders older than 7 days
       const mockNow = Date.now() + (8 * 24 * 60 * 60 * 1000);
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
 
-      const removed = manager.cleanup(7);
+      const removed = await manager.cleanup(7);
       expect(removed).toBeGreaterThan(0);
     });
 
-    test('should not clean up recent orders', () => {
-      const removed = manager.cleanup(7);
+    test('should not clean up recent orders', async () => {
+      const removed = await manager.cleanup(7);
       expect(removed).toBe(0);
     });
 
-    test('should not clean up pending orders', () => {
-      manager.createOrder({
+    test('should not clean up pending orders', async () => {
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -382,7 +382,7 @@ describe('LimitOrderManager', () => {
       const mockNow = Date.now() + (8 * 24 * 60 * 60 * 1000);
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
 
-      const removed = manager.cleanup(7);
+      const removed = await manager.cleanup(7);
 
       // Should still have the pending order
       const orders = manager.getAllOrders();
@@ -391,9 +391,9 @@ describe('LimitOrderManager', () => {
   });
 
   describe('Statistics', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // Create orders with various statuses
-      const order1 = manager.createOrder({
+      const order1 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.025,
@@ -401,7 +401,7 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'manual' as ExitStrategy
       });
 
-      const order2 = manager.createOrder({
+      const order2 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.03,
@@ -409,7 +409,7 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'manual' as ExitStrategy
       });
 
-      const order3 = manager.createOrder({
+      const order3 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         targetPrice: 0.02,
@@ -417,12 +417,12 @@ describe('LimitOrderManager', () => {
         exitStrategy: 'manual' as ExitStrategy
       });
 
-      manager.markExecuting(order1.id);
-      manager.markFilled(order2.id, 'sig1', mockTokenMint);
+      await manager.markExecuting(order1.id);
+      await manager.markFilled(order2.id, 'sig1', mockTokenMint);
       // order3 remains pending
     });
 
-    test('should return correct statistics', () => {
+    test('should return correct statistics', async () => {
       const stats = manager.getStatistics();
 
       expect(stats.total).toBe(3);
@@ -435,7 +435,7 @@ describe('LimitOrderManager', () => {
   });
 
   describe('Data Persistence', () => {
-    test('should load orders from disk on initialization', () => {
+    test('should load orders from disk on initialization', async () => {
       const mockOrders = [
         {
           id: '123',
@@ -460,13 +460,13 @@ describe('LimitOrderManager', () => {
       expect(orders[0].id).toBe('123');
     });
 
-    test('should handle missing data directory gracefully', () => {
+    test('should handle missing data directory gracefully', async () => {
       mockFs.existsSync.mockReturnValue(false);
 
       expect(() => new LimitOrderManager()).not.toThrow();
     });
 
-    test('should handle corrupted data file gracefully', () => {
+    test('should handle corrupted data file gracefully', async () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue('invalid json');
 

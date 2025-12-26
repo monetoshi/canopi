@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star, ExternalLink, TrendingUp, TrendingDown, Trash2, RefreshCw } from 'lucide-react';
+import { Star, ExternalLink, Trash2, RefreshCw } from 'lucide-react';
+import { getWatchlist, removeFromWatchlist } from '@/lib/api';
+import type { WatchlistItem } from '@/lib/api';
 
-interface WatchlistToken {
-  mint: string;
-  symbol: string;
-  name: string;
-  addedAt: number;
+interface WatchlistToken extends WatchlistItem {
+  name?: string;
   currentPrice?: number;
   priceChange24h?: number;
   liquidity?: number;
@@ -15,19 +14,22 @@ interface WatchlistToken {
 
 interface WatchlistProps {
   onSelectToken: (mint: string, symbol: string) => void;
+  activeWalletKey?: string | null;
 }
 
-export default function Watchlist({ onSelectToken }: WatchlistProps) {
+export default function Watchlist({ onSelectToken, activeWalletKey }: WatchlistProps) {
   const [watchlist, setWatchlist] = useState<WatchlistToken[]>([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Load watchlist from localStorage on mount
+  // Load watchlist from API on mount
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem('solana-watchlist');
-    console.log('[Watchlist] Loading from localStorage:', saved ? `${JSON.parse(saved).length} tokens` : 'empty');
-    loadWatchlist();
+    if (activeWalletKey) {
+      loadWatchlist();
+    } else {
+      setWatchlist([]);
+    }
 
     // Listen for watchlist updates from other components
     const handleWatchlistUpdate = () => {
@@ -37,49 +39,37 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
 
     window.addEventListener('watchlist-updated', handleWatchlistUpdate);
     return () => window.removeEventListener('watchlist-updated', handleWatchlistUpdate);
-  }, []);
+  }, [activeWalletKey]);
 
-  const loadWatchlist = () => {
+  const loadWatchlist = async () => {
+    if (!activeWalletKey) return;
+    
     try {
-      const saved = localStorage.getItem('solana-watchlist');
-      console.log('[Watchlist] loadWatchlist called, raw data:', saved);
-      if (saved) {
-        const tokens = JSON.parse(saved) as WatchlistToken[];
-        console.log('[Watchlist] Parsed tokens:', tokens.length, 'items');
-        setWatchlist(tokens);
-      } else {
-        console.log('[Watchlist] No data in localStorage, setting empty array');
-        setWatchlist([]);
+      setLoading(true);
+      const items = await getWatchlist(activeWalletKey);
+      
+      const tokens: WatchlistToken[] = items.map(i => ({
+        ...i,
+        name: i.symbol // Default name to symbol until fetched
+      }));
+      
+      setWatchlist(tokens);
+      
+      // Fetch prices immediately
+      if (tokens.length > 0) {
+         fetchPricesForTokens(tokens);
       }
     } catch (error) {
       console.error('[Watchlist] Failed to load watchlist:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const saveWatchlist = (tokens: WatchlistToken[]) => {
+  const fetchPricesForTokens = async (tokens: WatchlistToken[]) => {
     try {
-      console.log('[Watchlist] saveWatchlist called with', tokens.length, 'tokens');
-      localStorage.setItem('solana-watchlist', JSON.stringify(tokens));
-      setWatchlist(tokens);
-      console.log('[Watchlist] Successfully saved to localStorage');
-    } catch (error) {
-      console.error('[Watchlist] Failed to save watchlist:', error);
-    }
-  };
-
-  const removeFromWatchlist = (mint: string) => {
-    const updated = watchlist.filter(token => token.mint !== mint);
-    saveWatchlist(updated);
-    // Notify other components
-    window.dispatchEvent(new Event('watchlist-updated'));
-  };
-
-  const refreshPrices = async () => {
-    setLoading(true);
-    try {
-      // Fetch updated prices for all watchlist tokens
       const updatedTokens = await Promise.all(
-        watchlist.map(async (token) => {
+        tokens.map(async (token) => {
           try {
             const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${token.mint}`);
             if (response.ok) {
@@ -87,13 +77,13 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
               const solanaPairs = data.pairs?.filter((p: any) => p.chainId === 'solana');
 
               if (solanaPairs && solanaPairs.length > 0) {
-                // Get pair with highest liquidity
                 const bestPair = solanaPairs.sort((a: any, b: any) =>
                   (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0)
                 )[0];
 
                 return {
                   ...token,
+                  name: bestPair.baseToken?.name || token.symbol,
                   currentPrice: parseFloat(bestPair.priceUsd),
                   priceChange24h: bestPair.priceChange?.h24 || 0,
                   liquidity: bestPair.liquidity?.usd || 0
@@ -106,20 +96,29 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
           return token;
         })
       );
-
-      saveWatchlist(updatedTokens);
+      setWatchlist(updatedTokens);
     } catch (error) {
-      console.error('Failed to refresh prices:', error);
-    } finally {
-      setLoading(false);
+      console.error('Failed to fetch prices:', error);
     }
   };
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
+  const handleRemove = async (mint: string) => {
+    if (!activeWalletKey) return;
+    
+    try {
+      await removeFromWatchlist(activeWalletKey, mint);
+      loadWatchlist(); // Reload from server to sync
+      window.dispatchEvent(new Event('watchlist-updated'));
+    } catch (error) {
+      console.error('Failed to remove token:', error);
+    }
+  };
+
+  const refreshPrices = () => {
+    if (watchlist.length > 0) {
+      setLoading(true);
+      fetchPricesForTokens(watchlist).finally(() => setLoading(false));
+    }
   };
 
   // Prevent hydration errors by not rendering until mounted
@@ -213,7 +212,7 @@ export default function Watchlist({ onSelectToken }: WatchlistProps) {
                       Trade
                     </button>
                     <button
-                      onClick={() => removeFromWatchlist(token.mint)}
+                      onClick={() => handleRemove(token.mint)}
                       className="p-0.5 hover:bg-red-600/30 text-red-400 rounded transition-all"
                       title="Remove"
                     >

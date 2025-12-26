@@ -100,6 +100,10 @@ export interface Position {
   highestProfit: number;
   /** Current status of the position */
   status: 'active' | 'closing' | 'closed';
+  /** Whether this position was executed privately */
+  isPrivate?: boolean;
+  /** The public key of the wallet that actually holds the tokens (different from walletPublicKey if private) */
+  executionWallet?: string;
   /** Optional: Current price */
   currentPrice?: number;
   /** Optional: Current profit percentage */
@@ -282,6 +286,8 @@ export interface LimitOrder {
   id: string;
   /** Wallet public key */
   walletPublicKey: string;
+  /** Order type (BUY or SELL) */
+  type: 'BUY' | 'SELL';
   /** Token mint to buy */
   tokenMint: string;
   /** Token symbol (if known) */
@@ -304,4 +310,51 @@ export interface LimitOrder {
   signature?: string;
   /** Position created (when filled) */
   positionMint?: string;
+  /** Whether this order should be executed privately */
+  isPrivate?: boolean;
+  /** Address of ephemeral wallet (if private) */
+  executionWallet?: string;
+}
+
+/**
+ * Pending sell waiting for user approval
+ * Created when exit conditions are met, executed when user approves
+ */
+export interface PendingSell {
+  /** Unique pending sell ID */
+  id: string;
+  /** Wallet public key */
+  walletPublicKey: string;
+  /** Token mint to sell */
+  tokenMint: string;
+  /** Token symbol (if known) */
+  tokenSymbol?: string;
+  /** Percentage of position to sell (1-100) */
+  sellPercentage: number;
+  /** Amount of tokens to sell */
+  tokenAmount: number;
+  /** Current price at time of detection */
+  currentPrice: number;
+  /** Entry price of the position */
+  entryPrice: number;
+  /** Current profit percentage */
+  currentProfit: number;
+  /** Estimated SOL to receive from sale */
+  estimatedSolReceived: number;
+  /** Exit trigger reason */
+  reason: string;
+  /** Exit strategy that triggered this sell */
+  strategy: ExitStrategy;
+  /** Slippage tolerance in basis points */
+  slippageBps: number;
+  /** Prepared transaction (base64 encoded) */
+  preparedTransaction: string;
+  /** Status */
+  status: 'pending' | 'executing' | 'executed' | 'cancelled' | 'expired';
+  /** Creation timestamp */
+  createdAt: number;
+  /** Expiration timestamp (30 minutes default) */
+  expiresAt: number;
+  /** Transaction signature (when executed) */
+  signature?: string;
 }

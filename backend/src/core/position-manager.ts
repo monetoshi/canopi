@@ -1,88 +1,118 @@
 /**
  * Solana Trading Bot - Position Manager
  * Manages all active trading positions across multiple wallets
+ * Uses Drizzle ORM + PGLite for persistence and in-memory cache for speed
  */
 
 import { Position, ExitStrategy } from '../types';
 import { getStrategy } from './strategies';
 import { logger } from '../utils/logger.util';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const POSITIONS_FILE = path.join(__dirname, '../../data/positions.json');
+import { db } from '../db/index';
+import { positions as positionsTable, NewPosition } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * Position Manager
  * Tracks and manages all active trading positions
  */
 export class PositionManager {
-  // Map of wallet address -> array of positions
+  // In-memory cache: wallet address -> array of positions
   private positions: Map<string, Position[]> = new Map();
+  private initialized = false;
+  private initPromise: Promise<void>;
 
   constructor() {
-    // Load positions from disk on startup
-    this.loadPositions();
+    // Load cache from DB on startup
+    this.initPromise = this.initialize();
   }
 
   /**
-   * Load positions from disk
+   * Wait for initialization to complete
    */
-  private loadPositions(): void {
+  public async waitForReady(): Promise<void> {
+    return this.initPromise;
+  }
+
+  /**
+   * Initialize cache from database
+   */
+  private async initialize() {
     try {
-      // Create data directory if it doesn't exist
-      const dataDir = path.dirname(POSITIONS_FILE);
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
+      const allPositions = await db.select().from(positionsTable);
+      
+      this.positions.clear();
+      for (const pos of allPositions) {
+        // Map DB fields to Position type
+        const position: Position = {
+          mint: pos.tokenMint,
+          walletPublicKey: pos.walletPublicKey,
+          entryTime: pos.entryTime.getTime(),
+          entryPrice: parseFloat(pos.entryPriceUsd),
+          tokenAmount: parseFloat(pos.tokenAmount),
+          solSpent: parseFloat(pos.solSpent),
+          exitStagesCompleted: pos.exitStagesCompleted || 0,
+          strategy: pos.strategy as ExitStrategy,
+          isPercentageBased: false, // Default, updated by strategy config
+          highestProfit: parseFloat(pos.highestProfit || '0'),
+          status: pos.status as 'active' | 'closing' | 'closed',
+          currentPrice: pos.currentPrice ? parseFloat(pos.currentPrice) : undefined,
+          currentProfit: pos.currentProfit ? parseFloat(pos.currentProfit) : undefined,
+          // Todo: Add isPrivate/executionWallet to DB schema if needed for full persistence
+        };
 
-      // Load positions from file
-      if (fs.existsSync(POSITIONS_FILE)) {
-        const data = fs.readFileSync(POSITIONS_FILE, 'utf-8');
-        const positionsArray: Position[] = JSON.parse(data);
-
-        // Rebuild Map from array
-        this.positions.clear();
-        for (const position of positionsArray) {
-          const key = position.walletPublicKey;
-          if (!this.positions.has(key)) {
-            this.positions.set(key, []);
-          }
-          this.positions.get(key)!.push(position);
+        // Update percentage based flag from strategy config
+        const strategyConfig = getStrategy(position.strategy);
+        if (strategyConfig) {
+          position.isPercentageBased = strategyConfig.isPercentageBased;
         }
 
-        console.log(`[PositionManager] Loaded ${positionsArray.length} positions from disk`);
-      } else {
-        console.log('[PositionManager] No saved positions found, starting fresh');
+        const key = position.walletPublicKey;
+        if (!this.positions.has(key)) {
+          this.positions.set(key, []);
+        }
+        this.positions.get(key)!.push(position);
       }
+      
+      this.initialized = true;
+      console.log(`[PositionManager] Loaded ${allPositions.length} positions from database`);
     } catch (error) {
-      console.error('[PositionManager] Error loading positions:', error);
-    }
-  }
-
-  /**
-   * Save positions to disk
-   */
-  private savePositions(): void {
-    try {
-      const allPositions = this.getAllPositions();
-      fs.writeFileSync(POSITIONS_FILE, JSON.stringify(allPositions, null, 2));
-      console.log(`[PositionManager] Saved ${allPositions.length} positions to disk`);
-    } catch (error) {
-      console.error('[PositionManager] Error saving positions:', error);
+      console.error('[PositionManager] Error initializing from database:', error);
     }
   }
 
   /**
    * Add a new position
    */
-  addPosition(position: Position): void {
+  async addPosition(position: Position): Promise<void> {
+    // Update Cache
     const key = position.walletPublicKey;
     if (!this.positions.has(key)) {
       this.positions.set(key, []);
     }
     this.positions.get(key)!.push(position);
-    console.log(`[PositionManager] Added position: ${position.mint} for ${key.slice(0, 8)}...`);
-    this.savePositions(); // Persist to disk
+
+    // Persist to DB
+    try {
+      const newPosition: NewPosition = {
+        walletPublicKey: position.walletPublicKey,
+        tokenMint: position.mint,
+        entryTime: new Date(position.entryTime),
+        entryPriceUsd: position.entryPrice.toString(),
+        tokenAmount: position.tokenAmount.toString(),
+        solSpent: position.solSpent.toString(),
+        strategy: position.strategy,
+        status: position.status,
+        highestProfit: position.highestProfit.toString(),
+        currentPrice: position.currentPrice?.toString(),
+        currentProfit: position.currentProfit?.toString(),
+        exitStagesCompleted: position.exitStagesCompleted
+      };
+
+      await db.insert(positionsTable).values(newPosition);
+      console.log(`[PositionManager] Added position: ${position.mint} for ${key.slice(0, 8)}...`);
+    } catch (error) {
+      console.error('[PositionManager] Error saving position to DB:', error);
+    }
   }
 
   /**
@@ -103,15 +133,14 @@ export class PositionManager {
 
   /**
    * Add to an existing position by merging a new buy
-   * Recalculates average entry price and updates position totals
    */
-  public addToPosition(
+  public async addToPosition(
     walletPublicKey: string,
     mint: string,
     additionalTokens: number,
     additionalSolSpent: number,
     newEntryPrice: number
-  ): void {
+  ): Promise<void> {
     const position = this.getPosition(walletPublicKey, mint);
 
     if (!position) {
@@ -122,26 +151,38 @@ export class PositionManager {
       throw new Error('Cannot add to closed position');
     }
 
-    // Calculate new weighted average entry price (in USD per token)
-    // Old cost in USD = old price * old tokens
-    // New cost in USD = new price * new tokens
+    // Calculate new weighted average
     const oldCost = position.entryPrice * position.tokenAmount;
     const newCost = newEntryPrice * additionalTokens;
     const totalCost = oldCost + newCost;
     const totalTokens = position.tokenAmount + additionalTokens;
     const newAvgEntryPrice = totalCost / totalTokens;
 
-    // Update position
+    // Update Cache
     position.tokenAmount = totalTokens;
     position.solSpent = position.solSpent + additionalSolSpent;
     position.entryPrice = newAvgEntryPrice;
-
-    // Reset exit stages since position size changed
     position.exitStagesCompleted = 0;
 
-    this.savePositions();
-
-    logger.info(`Added to position: ${mint} - New total: ${totalTokens} tokens, Avg entry: ${newAvgEntryPrice}`);
+    // Update DB
+    try {
+      await db.update(positionsTable)
+        .set({
+          tokenAmount: totalTokens.toString(),
+          solSpent: position.solSpent.toString(),
+          entryPriceUsd: newAvgEntryPrice.toString(),
+          exitStagesCompleted: 0
+        })
+        .where(and(
+          eq(positionsTable.walletPublicKey, walletPublicKey),
+          eq(positionsTable.tokenMint, mint),
+          eq(positionsTable.status, 'active')
+        ));
+        
+      logger.info(`Added to position: ${mint} - New total: ${totalTokens} tokens, Avg entry: ${newAvgEntryPrice}`);
+    } catch (error) {
+      console.error('[PositionManager] Error updating position in DB:', error);
+    }
   }
 
   /**
@@ -167,17 +208,42 @@ export class PositionManager {
   }
 
   /**
-   * Update a position
+   * Update a position (generic update)
    */
-  updatePosition(walletPublicKey: string, mint: string, updates: Partial<Position>): boolean {
+  async updatePosition(walletPublicKey: string, mint: string, updates: Partial<Position>): Promise<boolean> {
     const positions = this.positions.get(walletPublicKey);
     if (!positions) return false;
 
     const position = positions.find(p => p.mint === mint && p.status === 'active');
     if (position) {
+      // Update Cache
       Object.assign(position, updates);
       console.log(`[PositionManager] Updated position: ${mint} for ${walletPublicKey.slice(0, 8)}...`);
-      this.savePositions(); // Persist to disk
+      
+      // Update DB
+      try {
+        const dbUpdates: any = {};
+        if (updates.status) dbUpdates.status = updates.status;
+        if (updates.currentPrice !== undefined) dbUpdates.currentPrice = updates.currentPrice.toString();
+        if (updates.currentProfit !== undefined) dbUpdates.currentProfit = updates.currentProfit.toString();
+        if (updates.highestProfit !== undefined) dbUpdates.highestProfit = updates.highestProfit.toString();
+        if (updates.exitStagesCompleted !== undefined) dbUpdates.exitStagesCompleted = updates.exitStagesCompleted;
+        if (updates.tokenAmount !== undefined) dbUpdates.tokenAmount = updates.tokenAmount.toString();
+        if (updates.solSpent !== undefined) dbUpdates.solSpent = updates.solSpent.toString();
+
+        if (Object.keys(dbUpdates).length > 0) {
+          await db.update(positionsTable)
+            .set({ ...dbUpdates, updatedAt: new Date() })
+            .where(and(
+              eq(positionsTable.walletPublicKey, walletPublicKey),
+              eq(positionsTable.tokenMint, mint),
+              eq(positionsTable.status, 'active') // Only update active record in DB
+            ));
+        }
+      } catch (error) {
+        console.error('[PositionManager] Error syncing update to DB:', error);
+      }
+      
       return true;
     }
     return false;
@@ -185,21 +251,19 @@ export class PositionManager {
 
   /**
    * Update position with current price and calculate profit
+   * (High frequency update - consider batching DB writes if performance suffers)
    */
   updatePositionPrice(walletPublicKey: string, mint: string, currentPrice: number): Position | null {
     const position = this.getPosition(walletPublicKey, mint);
     if (!position) return null;
 
     // Don't update with obvious mock/fallback prices
-    // The default Jupiter mock price is exactly 0.00015
     if (currentPrice === 0.00015) {
-      console.log(`[PositionManager] Skipping mock price update for ${mint.slice(0, 8)}, keeping current: $${position.currentPrice}`);
       return position;
     }
 
     const currentProfit = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
 
-    // Update highest profit if current is higher
     if (currentProfit > position.highestProfit) {
       position.highestProfit = currentProfit;
     }
@@ -207,38 +271,83 @@ export class PositionManager {
     position.currentPrice = currentPrice;
     position.currentProfit = currentProfit;
 
-    // Persist to disk so the real price is saved
-    this.savePositions();
+    // Note: We don't await this to avoid blocking the loop
+    // In production, we might want to debounce these DB writes
+    this.persistPriceUpdate(walletPublicKey, mint, currentPrice, currentProfit, position.highestProfit);
 
     return position;
+  }
+
+  private async persistPriceUpdate(wallet: string, mint: string, price: number, profit: number, highestProfit: number) {
+    try {
+      await db.update(positionsTable)
+        .set({
+          currentPrice: price.toString(),
+          currentProfit: profit.toString(),
+          highestProfit: highestProfit.toString(),
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(positionsTable.walletPublicKey, wallet),
+          eq(positionsTable.tokenMint, mint),
+          eq(positionsTable.status, 'active')
+        ));
+    } catch (e) {
+      // Silent fail for high freq updates
+    }
   }
 
   /**
    * Mark position as closing
    */
-  markClosing(walletPublicKey: string, mint: string): boolean {
+  async markClosing(walletPublicKey: string, mint: string): Promise<boolean> {
     return this.updatePosition(walletPublicKey, mint, { status: 'closing' });
   }
 
   /**
    * Close a position
    */
-  closePosition(walletPublicKey: string, mint: string): boolean {
-    return this.updatePosition(walletPublicKey, mint, { status: 'closed' });
+  async closePosition(walletPublicKey: string, mint: string): Promise<boolean> {
+    const success = await this.updatePosition(walletPublicKey, mint, { status: 'closed' });
+    
+    // Also remove from cache so it doesn't show up in active lists
+    // But keep in DB as history
+    if (success) {
+      const positions = this.positions.get(walletPublicKey);
+      if (positions) {
+        const index = positions.findIndex(p => p.mint === mint);
+        if (index !== -1) {
+          // Remove from active cache (since getPosition filters by 'active' anyway, this is just cleanup)
+          // positions.splice(index, 1); 
+          // Actually, let's keep it in cache but marked closed, so UI can show "Recent Closed"
+        }
+      }
+    }
+    return success;
   }
 
   /**
    * Remove a position entirely (cleanup)
    */
-  removePosition(walletPublicKey: string, mint: string): boolean {
+  async removePosition(walletPublicKey: string, mint: string): Promise<boolean> {
     const positions = this.positions.get(walletPublicKey);
     if (!positions) return false;
 
     const index = positions.findIndex(p => p.mint === mint);
     if (index !== -1) {
       positions.splice(index, 1);
-      console.log(`[PositionManager] Removed position: ${mint} for ${walletPublicKey.slice(0, 8)}...`);
-      this.savePositions(); // Persist to disk
+      
+      try {
+        await db.delete(positionsTable)
+          .where(and(
+            eq(positionsTable.walletPublicKey, walletPublicKey),
+            eq(positionsTable.tokenMint, mint)
+          ));
+        console.log(`[PositionManager] Removed position: ${mint} for ${walletPublicKey.slice(0, 8)}...`);
+      } catch (error) {
+        console.error('[PositionManager] Error removing from DB:', error);
+      }
+      
       return true;
     }
     return false;
@@ -246,7 +355,6 @@ export class PositionManager {
 
   /**
    * Check if position should exit based on strategy
-   * Returns { shouldExit: boolean, percentage: number, reason: string }
    */
   checkExitConditions(position: Position, currentPrice: number): {
     shouldExit: boolean;
@@ -289,7 +397,6 @@ export class PositionManager {
     if (currentStage < strategy.exitStages.length) {
       const nextStage = strategy.exitStages[currentStage];
 
-      // For percentage-based strategies, only check profit
       if (strategy.isPercentageBased) {
         if (currentProfit >= nextStage.minProfitPercent) {
           return {
@@ -298,9 +405,7 @@ export class PositionManager {
             reason: `Stage ${currentStage + 1}: ${currentProfit.toFixed(2)}% profit reached`
           };
         }
-      }
-      // For time-based strategies, check both time and profit
-      else {
+      } else {
         if (nextStage.timeMinutes && timeHeld >= nextStage.timeMinutes) {
           if (currentProfit >= nextStage.minProfitPercent) {
             return {
@@ -323,30 +428,52 @@ export class PositionManager {
   /**
    * Increment exit stage for a position
    */
-  incrementExitStage(walletPublicKey: string, mint: string): boolean {
+  async incrementExitStage(walletPublicKey: string, mint: string): Promise<boolean> {
     const position = this.getPosition(walletPublicKey, mint);
     if (!position) return false;
 
     position.exitStagesCompleted++;
-    console.log(`[PositionManager] Position ${mint} completed stage ${position.exitStagesCompleted}`);
-    this.savePositions(); // Persist to disk
+    
+    // Update DB
+    try {
+      await db.update(positionsTable)
+        .set({ 
+          exitStagesCompleted: position.exitStagesCompleted,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(positionsTable.walletPublicKey, walletPublicKey),
+          eq(positionsTable.tokenMint, mint),
+          eq(positionsTable.status, 'active')
+        ));
+        
+      console.log(`[PositionManager] Position ${mint} completed stage ${position.exitStagesCompleted}`);
+    } catch (error) {
+      console.error('[PositionManager] Error updating exit stage in DB:', error);
+    }
+    
     return true;
   }
 
   /**
    * Get statistics across all positions
+   * (Now uses cached values, could optionally query DB for historical stats)
    */
   getStatistics() {
-    const allPositions = this.getAllPositions();
-    const activePositions = this.getAllActivePositions();
+    // For now, use in-memory cache which holds active positions + recently closed
+    // Ideally, we should query DB for full history
+    const allPositions = Array.from(this.positions.values()).flat();
+    const activePositions = allPositions.filter(p => p.status === 'active');
+    const closedPositions = allPositions.filter(p => p.status === 'closed');
 
     const totalPositions = allPositions.length;
     const activeCount = activePositions.length;
-    const closedCount = allPositions.filter(p => p.status === 'closed').length;
+    const closedCount = closedPositions.length;
 
     const totalInvested = allPositions.reduce((sum, p) => sum + p.solSpent, 0);
-    const avgHoldTime = allPositions
-      .filter(p => p.status === 'closed')
+    
+    // Simple average of held time for closed positions in memory
+    const avgHoldTime = closedPositions
       .reduce((sum, p) => sum + (Date.now() - p.entryTime), 0) / (closedCount || 1);
 
     return {
@@ -361,9 +488,14 @@ export class PositionManager {
   /**
    * Clear all positions (for testing)
    */
-  clear(): void {
+  async clear(): Promise<void> {
     this.positions.clear();
-    console.log('[PositionManager] All positions cleared');
+    try {
+      await db.delete(positionsTable);
+      console.log('[PositionManager] All positions cleared from DB');
+    } catch (error) {
+      console.error('[PositionManager] Error clearing DB:', error);
+    }
   }
 }
 

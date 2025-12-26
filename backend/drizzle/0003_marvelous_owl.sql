@@ -1,0 +1,1 @@
+ALTER TABLE "dca_orders" ADD COLUMN "is_private" boolean DEFAULT false;

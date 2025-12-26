@@ -4,17 +4,45 @@
  */
 
 import axios, { AxiosError } from 'axios';
-import type { ApiResponse, Position, WalletBalance, StrategyConfig, PriceData, ExitStrategy, DCAOrder, DCAStrategyType, PendingDCABuy, DCAStatistics } from '@/types';
+import type { ApiResponse, Position, WalletBalance, StrategyConfig, PriceData, ExitStrategy, DCAOrder, DCAStrategyType, PendingDCABuy, DCAStatistics, PendingSell, BotStatus, Trade, LimitOrder } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000,
+  timeout: 120000, // 2 minutes for long-running private transactions
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Add interceptor to inject Admin Key from localStorage
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const adminKey = localStorage.getItem('admin_api_key');
+    if (adminKey) {
+      config.headers['x-admin-key'] = adminKey;
+    }
+  }
+  return config;
+});
+
+/**
+ * Get bot wallet status
+ */
+export async function getBotStatus(): Promise<BotStatus> {
+  try {
+    const response = await api.get<ApiResponse<BotStatus>>('/api/bot/status');
+    if (!response.data.success || !response.data.data) {
+       // Return default "not configured" state on error
+       return { configured: false, publicKey: null, balance: 0 };
+    }
+    return response.data.data;
+  } catch (error) {
+    console.error('Error getting bot status:', error);
+    return { configured: false, publicKey: null, balance: 0 };
+  }
+}
 
 /**
  * Get wallet balance
@@ -60,6 +88,30 @@ export async function getStrategies(): Promise<Record<ExitStrategy, StrategyConf
     return response.data.data;
   } catch (error) {
     console.error('Error getting strategies:', error);
+    throw error;
+  }
+}
+
+/**
+ * Execute buy transaction using Bot Wallet (Server-Side)
+ */
+export async function executeBotTrade(params: {
+  tokenMint: string;
+  solAmount: number;
+  strategy?: ExitStrategy;
+  slippageBps?: number;
+  isPrivate?: boolean;
+}): Promise<{ signature: string; position: Position }> {
+  try {
+    const response = await api.post<ApiResponse>('/api/bot/trade', params);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || 'Failed to execute bot trade');
+    }
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
     throw error;
   }
 }
@@ -137,6 +189,107 @@ export async function prepareSellTransaction(params: {
 }
 
 /**
+ * Get Telegram connection status
+ */
+export async function getTelegramStatus(walletPublicKey: string): Promise<{ linked: boolean; username: string | null; botUsername: string }> {
+  try {
+    const response = await api.get<ApiResponse<{ linked: boolean; username: string | null; botUsername: string }>>(`/api/telegram/status/${walletPublicKey}`);
+    if (!response.data.success || !response.data.data) {
+      throw new Error('Failed to get Telegram status');
+    }
+    return response.data.data;
+  } catch (error) {
+    console.error('Error getting Telegram status:', error);
+    return { linked: false, username: null, botUsername: 'CanopiTradingBot' };
+  }
+}
+
+/**
+ * Create a new limit order
+ */
+export async function createLimitOrder(params: {
+  walletPublicKey: string;
+  tokenMint: string;
+  type?: 'BUY' | 'SELL';
+  tokenSymbol?: string;
+  targetPrice: number;
+  solAmount: number;
+  exitStrategy: ExitStrategy;
+  slippageBps?: number;
+  expiresIn?: number;
+}): Promise<LimitOrder> {
+  try {
+    const response = await api.post<ApiResponse<LimitOrder>>('/api/limit-orders', params);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || 'Failed to create limit order');
+    }
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Generate Telegram Link Code
+ */
+export async function generateTelegramLinkCode(walletPublicKey: string): Promise<{ code: string; botUsername: string }> {
+  try {
+    const response = await api.post<ApiResponse<{ code: string; botUsername: string }>>('/api/telegram/link', { walletPublicKey });
+    if (!response.data.success || !response.data.data) {
+      throw new Error('Failed to generate Telegram link code');
+    }
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get transaction history
+ */
+export async function getTrades(publicKey: string): Promise<Trade[]> {
+  try {
+    const response = await api.get<ApiResponse<Trade[]>>(`/api/trades/${publicKey}`);
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to get trades');
+    }
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error getting trades:', error);
+    return [];
+  }
+}
+
+/**
+ * Execute sell transaction using Bot Wallet or Ephemeral Wallet (Server-Side)
+ */
+export async function executeBotExit(params: {
+  tokenMint: string;
+  walletPublicKey: string;
+  percentage: number;
+  slippageBps?: number;
+}): Promise<{ signature: string }> {
+  try {
+    const response = await api.post<ApiResponse>('/api/bot/exit', params);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || 'Failed to execute bot exit');
+    }
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
+    throw error;
+  }
+}
+
+/**
  * Execute sell transaction
  */
 export async function executeSellTransaction(params: {
@@ -156,6 +309,88 @@ export async function executeSellTransaction(params: {
       throw new Error(error.response?.data?.error || error.message);
     }
     throw error;
+  }
+}
+
+export interface WatchlistItem {
+  mint: string;
+  symbol: string;
+  addedAt: number;
+}
+
+export interface ShieldedStatus {
+  available: number;
+  availableRaw: string;
+  poolAddress: string;
+}
+
+/**
+ * Get shielded balance (ShadowWire)
+ */
+export async function getShieldedStatus(walletAddress: string): Promise<ShieldedStatus | null> {
+  try {
+    const response = await api.get<ApiResponse<ShieldedStatus>>(`/api/privacy/status/${walletAddress}`);
+    return response.data.data || null;
+  } catch (error) {
+    console.error('Error getting shielded status:', error);
+    return null;
+  }
+}
+
+/**
+ * Shield funds (Deposit)
+ */
+export async function shieldFunds(amount: number): Promise<{ signature: string }> {
+  const response = await api.post<ApiResponse<{ signature: string }>>('/api/privacy/shield', { amount });
+  if (!response.data.success || !response.data.data) throw new Error(response.data.error || 'Shielding failed');
+  return response.data.data;
+}
+
+/**
+ * Unshield funds (Withdraw)
+ */
+export async function unshieldFunds(amount: number): Promise<{ signature: string }> {
+  const response = await api.post<ApiResponse<{ signature: string }>>('/api/privacy/unshield', { amount });
+  if (!response.data.success || !response.data.data) throw new Error(response.data.error || 'Unshielding failed');
+  return response.data.data;
+}
+
+/**
+ * Get watchlist
+ */
+export async function getWatchlist(walletPublicKey: string): Promise<WatchlistItem[]> {
+  try {
+    const response = await api.get<ApiResponse<WatchlistItem[]>>(`/api/watchlist/${walletPublicKey}`);
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error getting watchlist:', error);
+    return [];
+  }
+}
+
+/**
+ * Add to watchlist
+ */
+export async function addToWatchlist(walletPublicKey: string, mint: string, symbol: string): Promise<WatchlistItem[]> {
+  try {
+    const response = await api.post<ApiResponse<WatchlistItem[]>>('/api/watchlist', { walletPublicKey, mint, symbol });
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error adding to watchlist:', error);
+    return [];
+  }
+}
+
+/**
+ * Remove from watchlist
+ */
+export async function removeFromWatchlist(walletPublicKey: string, mint: string): Promise<WatchlistItem[]> {
+  try {
+    const response = await api.delete<ApiResponse<WatchlistItem[]>>(`/api/watchlist/${walletPublicKey}/${mint}`);
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error removing from watchlist:', error);
+    return [];
   }
 }
 
@@ -229,6 +464,7 @@ export async function createDCAOrder(params: {
   exitStrategy: ExitStrategy;
   slippageBps?: number;
   referencePrice?: number;
+  isPrivate?: boolean;
 }): Promise<DCAOrder> {
   try {
     const response = await api.post<ApiResponse<DCAOrder>>('/api/dca-orders', params);
@@ -382,5 +618,59 @@ export async function getDCAStats(): Promise<{ orders: DCAStatistics; executor: 
   } catch (error) {
     console.error('Error getting DCA stats:', error);
     return null;
+  }
+}
+
+// ===== Pending Sells API Functions (Auto-Exit) =====
+
+/**
+ * Get pending sells for a wallet
+ */
+export async function getPendingSells(publicKey: string): Promise<PendingSell[]> {
+  try {
+    const response = await api.get<ApiResponse<PendingSell[]>>(`/api/pending-sells/${publicKey}`);
+    if (!response.data.success) {
+      return [];
+    }
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error getting pending sells:', error);
+    return [];
+  }
+}
+
+/**
+ * Execute a pending sell
+ */
+export async function executePendingSell(params: {
+  id: string;
+  signedTransaction: string;
+}): Promise<{ signature: string }> {
+  try {
+    const response = await api.post<ApiResponse>(`/api/pending-sells/${params.id}/execute`, {
+      signedTransaction: params.signedTransaction
+    });
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || 'Failed to execute pending sell');
+    }
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Cancel a pending sell
+ */
+export async function cancelPendingSell(id: string): Promise<boolean> {
+  try {
+    const response = await api.delete<ApiResponse>(`/api/pending-sells/${id}`);
+    return response.data.success;
+  } catch (error) {
+    console.error('Error cancelling pending sell:', error);
+    return false;
   }
 }

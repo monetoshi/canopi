@@ -2,18 +2,20 @@
 
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { TrendingUp, TrendingDown, Clock, Target } from 'lucide-react';
-import type { Position } from '@/types';
-import { prepareSellTransaction, executeSellTransaction } from '@/lib/api';
+import { TrendingUp, TrendingDown, Clock, Target, ArrowDownCircle, ArrowUpCircle, Shield } from 'lucide-react';
+import type { Position, DCAOrder } from '@/types';
+import { prepareSellTransaction, executeSellTransaction, executeBotExit } from '@/lib/api';
 import { VersionedTransaction } from '@solana/web3.js';
 import AddToPositionModal from './AddToPositionModal';
 
 interface PositionCardProps {
   position: Position;
   onSell: () => void;
+  dcaOrders?: DCAOrder[];
+  isIntegrated?: boolean;
 }
 
-export default function PositionCard({ position, onSell }: PositionCardProps) {
+export default function PositionCard({ position, onSell, dcaOrders = [], isIntegrated = false }: PositionCardProps) {
   const { publicKey, signTransaction } = useWallet();
   const [selling, setSelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,39 @@ export default function PositionCard({ position, onSell }: PositionCardProps) {
   const isProfit = profitPercent >= 0;
   const timeHeld = Math.floor((Date.now() - position.entryTime) / 60000); // minutes
 
+  // Check if this position has an active DCA order (DCA Entry)
+  // If position has strategy=dca but no active order, it's DCA Exit
+  const activeDCAOrder = dcaOrders.find(
+    order => order.tokenMint === position.mint &&
+             order.walletPublicKey === position.walletPublicKey &&
+             (order.status === 'active' || order.status === 'paused')
+  );
+  const isDCAEntry = position.strategy === 'dca' && !!activeDCAOrder;
+  const isDCAExit = position.strategy === 'dca' && !activeDCAOrder;
+
   const handleSell = async (percentage: number) => {
+    // --- INTEGRATED OR PRIVATE FLOW ---
+    if (isIntegrated || position.isPrivate) {
+      setSelling(true);
+      setError(null);
+      try {
+        await executeBotExit({
+          tokenMint: position.mint,
+          walletPublicKey: position.walletPublicKey,
+          percentage,
+          slippageBps: 200
+        });
+        onSell();
+        return;
+      } catch (err: any) {
+        console.error('Error selling bot position:', err);
+        setError(err.message || 'Failed to sell position');
+        setSelling(false);
+        return;
+      }
+    }
+
+    // --- EXTERNAL WALLET FLOW ---
     if (!publicKey || !signTransaction) {
       setError('Wallet not connected');
       return;
@@ -68,6 +102,7 @@ export default function PositionCard({ position, onSell }: PositionCardProps) {
     }
   };
 
+
   return (
     <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
       <div className="flex justify-between items-start mb-3">
@@ -87,7 +122,15 @@ export default function PositionCard({ position, onSell }: PositionCardProps) {
             )}
           </div>
           <div>
-            <p className="text-white font-semibold">Token Position</p>
+            <p className="text-white font-semibold flex items-center gap-2">
+              Token Position
+              {position.isPrivate && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                  <Shield className="w-2.5 h-2.5" />
+                  Private
+                </span>
+              )}
+            </p>
             <p className="text-xs font-mono text-gray-400">
               {position.mint.slice(0, 8)}...{position.mint.slice(-8)}
             </p>
@@ -132,14 +175,33 @@ export default function PositionCard({ position, onSell }: PositionCardProps) {
           <Clock className="w-3 h-3" />
           {timeHeld}m held
         </span>
-        <span className="flex items-center gap-1">
-          <Target className="w-3 h-3" />
-          Stage {position.exitStagesCompleted + 1}
-        </span>
-        <span className="flex items-center gap-1 text-purple-400 font-medium">
-          <TrendingUp className="w-3 h-3" />
-          {position.strategy.toUpperCase()} Strategy
-        </span>
+        {isDCAEntry && activeDCAOrder ? (
+          <span className="flex items-center gap-1 text-emerald-400 font-medium">
+            <Target className="w-3 h-3" />
+            Buy {activeDCAOrder.currentBuy}/{activeDCAOrder.numberOfBuys}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1">
+            <Target className="w-3 h-3" />
+            Exit Stage {position.exitStagesCompleted + 1}
+          </span>
+        )}
+        {isDCAEntry ? (
+          <span className="flex items-center gap-1 text-emerald-400 font-medium">
+            <ArrowDownCircle className="w-3 h-3" />
+            DCA Entry
+          </span>
+        ) : isDCAExit ? (
+          <span className="flex items-center gap-1 text-orange-400 font-medium">
+            <ArrowUpCircle className="w-3 h-3" />
+            DCA Exit
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-purple-400 font-medium">
+            <TrendingUp className="w-3 h-3" />
+            {position.strategy.toUpperCase()} Strategy
+          </span>
+        )}
       </div>
 
       {error && (

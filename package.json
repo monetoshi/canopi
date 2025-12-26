@@ -1,0 +1,38 @@
+{
+  "name": "canopi-trading-bot",
+  "version": "1.0.0",
+  "description": "Desktop Solana Trading Bot",
+  "main": "electron/main.js",
+  "scripts": {
+    "desktop": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:electron\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:electron": "wait-on http://localhost:3000 && wait-on http://localhost:3001/api/health && cross-env NODE_ENV=development electron .",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "package": "npm run build:backend && npm run build:frontend && electron-builder"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.monetoshi.canopi",
+    "productName": "Canopi",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "backend/dist/**/*",
+      "frontend/out/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": "dmg"
+    }
+  }
+}

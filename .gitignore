@@ -20,7 +20,7 @@ out/
 *.tsbuildinfo
 
 # Data files (position data, orders, etc.)
-backend/data/*.json
+backend/data/
 !backend/data/.gitkeep
 
 # Logs
@@ -46,3 +46,18 @@ coverage/
 *.pem
 *.key
 credentials.json
+*.crt
+
+# Large Files & Installers
+*.iso
+
+# Sensitive Data
+*.csv
+
+# Screenshots & Personal Images
+Screenshot*.png
+backend/*.png
+avi meme.png
+
+# Agent Directory
+.gemini/

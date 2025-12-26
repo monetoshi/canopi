@@ -44,8 +44,15 @@ export interface Position {
   exitStagesCompleted: number;
   strategy: ExitStrategy;
   isPercentageBased: boolean;
+  /** Highest profit percentage achieved */
   highestProfit: number;
+  /** Current status of the position */
   status: 'active' | 'closing' | 'closed';
+  /** Whether this position was executed privately */
+  isPrivate?: boolean;
+  /** The public key of the wallet that actually holds the tokens (different from walletPublicKey if private) */
+  executionWallet?: string;
+  /** Optional: Current price */
   currentPrice?: number;
   currentProfit?: number;
 }
@@ -72,12 +79,28 @@ export interface WalletBalance {
   solUsd: number;
 }
 
-export interface TradeRequest {
+export type EntryStrategy =
+  | 'instant'
+  | 'limit'
+  | 'dca'
+  | 'breakout'
+  | 'dip';
+
+export interface LimitOrder {
+  id: string;
   walletPublicKey: string;
+  type: 'BUY' | 'SELL';
   tokenMint: string;
+  tokenSymbol?: string;
+  targetPrice: number;
   solAmount: number;
-  slippageBps?: number;
-  strategy?: ExitStrategy;
+  exitStrategy: ExitStrategy;
+  slippageBps: number;
+  status: 'pending' | 'executing' | 'filled' | 'cancelled' | 'expired';
+  createdAt: number;
+  expiresAt?: number;
+  signature?: string;
+  positionMint?: string;
 }
 
 // DCA Types
@@ -93,6 +116,7 @@ export interface DCABuyExecution {
   price: number;
   signature: string;
   positionMint: string;
+  executionWallet?: string;
 }
 
 export interface DCAOrder {
@@ -113,6 +137,7 @@ export interface DCAOrder {
   nextBuyAt?: number;
   completedBuys: DCABuyExecution[];
   referencePrice?: number;
+  isPrivate?: boolean;
 }
 
 export interface PendingDCABuy {
@@ -137,4 +162,56 @@ export interface DCAStatistics {
   cancelled: number;
   totalSolAllocated: number;
   totalSolSpent: number;
+}
+
+// Pending Sell Types (Auto-Exit)
+export interface PendingSell {
+  id: string;
+  walletPublicKey: string;
+  tokenMint: string;
+  tokenSymbol?: string;
+  sellPercentage: number;
+  tokenAmount: number;
+  currentPrice: number;
+  entryPrice: number;
+  currentProfit: number;
+  estimatedSolReceived: number;
+  reason: string;
+  strategy: ExitStrategy;
+  slippageBps: number;
+  preparedTransaction: string;
+  status: 'pending' | 'executing' | 'executed' | 'cancelled' | 'expired';
+  createdAt: number;
+  expiresAt: number;
+  signature?: string;
+}
+
+export interface BotStatus {
+  configured: boolean;
+  publicKey: string | null;
+  balance: number;
+}
+
+export interface Trade {
+  id: string;
+  walletPublicKey: string;
+  tokenMint: string;
+  positionId: string | null;
+  type: string;
+  solAmount: string;
+  tokenAmount: string;
+  priceUsd: string;
+  priceSol: string;
+  feeSol: string;
+  entryStrategy: string | null;
+  exitStrategy: string | null;
+  signature: string;
+  timestamp: string;
+  costBasisUsd: string | null;
+  costBasisMethod: string | null;
+  realizedGainLossUsd: string | null;
+  holdingPeriodDays: number | null;
+  isShortTerm: boolean | null;
+  isWashSale: boolean | null;
+  washSaleDisallowed: string | null;
 }

@@ -3,14 +3,61 @@
  * Helper functions for Solana blockchain interactions
  */
 
-import { Connection, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, VersionedTransaction, Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
+import * as dotenv from 'dotenv';
+import path from 'path';
+import { loadEncryptedWallet, decrypt } from './security.util';
+
+dotenv.config();
 
 /**
  * Initialize Solana connection
  */
 export function getConnection(rpcUrl: string = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com'): Connection {
   return new Connection(rpcUrl, 'confirmed');
+}
+
+/**
+ * Get server wallet Keypair from environment or encrypted keystore
+ */
+export function getWalletKeypair(): Keypair | null {
+  // Priority 1: Plaintext env var (Legacy/Dev)
+  const privateKey = process.env.WALLET_PRIVATE_KEY;
+  if (privateKey) {
+    try {
+      if (privateKey.startsWith('[') && privateKey.endsWith(']')) {
+        const array = JSON.parse(privateKey);
+        return Keypair.fromSecretKey(Uint8Array.from(array));
+      }
+      return Keypair.fromSecretKey(bs58.decode(privateKey));
+    } catch (error) {
+      console.error('[Blockchain] Failed to parse WALLET_PRIVATE_KEY:', error);
+    }
+  }
+
+  // Priority 2: Encrypted Keystore
+  const password = process.env.WALLET_PASSWORD;
+  if (password) {
+    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    const encryptedData = loadEncryptedWallet(walletPath);
+    
+    if (encryptedData) {
+      try {
+        const decryptedKey = decrypt(encryptedData, password);
+        if (decryptedKey.startsWith('[') && decryptedKey.endsWith(']')) {
+           return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
+        }
+        return Keypair.fromSecretKey(bs58.decode(decryptedKey));
+      } catch (error) {
+        console.error('[Blockchain] Failed to decrypt wallet. Incorrect password?');
+        return null;
+      }
+    }
+  }
+
+  console.warn('[Blockchain] No valid wallet configuration found (WALLET_PRIVATE_KEY or Encrypted Store + Password)');
+  return null;
 }
 
 /**

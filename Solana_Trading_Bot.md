@@ -709,7 +709,7 @@ Create:
 
 ### Nice to Have
 12. ⏳ Token scanner integration
-13. ⏳ Telegram notifications
+13. ✅ Telegram notifications
 14. ⏳ Advanced indicators
 15. ⏳ Drawing tools
 16. ⏳ Portfolio management

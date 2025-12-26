@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, TrendingUp, Droplets, DollarSign, ExternalLink, Copy, Check, AlertTriangle, Shield, Lock, Star, Users } from 'lucide-react';
+import { Search, TrendingUp, Droplets, DollarSign, ExternalLink, Copy, Check, AlertTriangle, Shield, Lock, Star, Users, X } from 'lucide-react';
+import { addToWatchlist, removeFromWatchlist, getWatchlist } from '@/lib/api';
 
 interface TokenResult {
   chainId: string;
@@ -49,9 +50,10 @@ interface TokenResult {
 
 interface TokenSearchProps {
   onSelectToken: (mint: string, symbol: string) => void;
+  activeWalletKey?: string | null;
 }
 
-export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
+export default function TokenSearch({ onSelectToken, activeWalletKey }: TokenSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TokenResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,21 +63,49 @@ export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
   const [loadingHolders, setLoadingHolders] = useState(false);
   const [holderCache, setHolderCache] = useState<Map<string, number>>(new Map());
   const [mounted, setMounted] = useState(false);
+  const [sortBy, setSortBy] = useState<'liquidity' | 'volume' | 'marketCap' | 'safety'>('liquidity');
+  const [autoSearch, setAutoSearch] = useState(false);
 
-  // Load watchlist mints from localStorage
+  // Load watchlist mints from API or localStorage
   useEffect(() => {
     setMounted(true);
-    try {
-      const saved = localStorage.getItem('solana-watchlist');
-      if (saved) {
-        const tokens = JSON.parse(saved);
-        const mints = new Set<string>(tokens.map((t: any) => t.mint));
-        setWatchlistMints(mints);
+    if (activeWalletKey) {
+      getWatchlist(activeWalletKey).then(items => {
+        setWatchlistMints(new Set(items.map(i => i.mint)));
+      }).catch(console.error);
+    } else {
+      try {
+        const saved = localStorage.getItem('solana-watchlist');
+        if (saved) {
+          const tokens = JSON.parse(saved);
+          const mints = new Set<string>(tokens.map((t: any) => t.mint));
+          setWatchlistMints(mints);
+        }
+      } catch (error) {
+        console.error('Failed to load watchlist:', error);
       }
-    } catch (error) {
-      console.error('Failed to load watchlist:', error);
     }
-  }, []);
+  }, [activeWalletKey]);
+
+  // Debounced auto-search when query changes
+  useEffect(() => {
+    if (!autoSearch || !query.trim()) {
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      searchTokens();
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(debounceTimer);
+  }, [query, autoSearch]);
+
+  // Re-sort results when sort criteria changes
+  useEffect(() => {
+    if (results.length > 0) {
+      setResults(sortResults(results));
+    }
+  }, [sortBy]);
 
   // Fetch holder counts from Solscan API
   const fetchHolderCount = async (tokenAddress: string) => {
@@ -245,6 +275,35 @@ export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
     }
   };
 
+  const sortResults = (tokens: TokenResult[]): TokenResult[] => {
+    const sorted = [...tokens];
+
+    switch (sortBy) {
+      case 'liquidity':
+        sorted.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
+        break;
+      case 'volume':
+        sorted.sort((a, b) => (b.volume?.h24 || 0) - (a.volume?.h24 || 0));
+        break;
+      case 'marketCap':
+        sorted.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+        break;
+      case 'safety':
+        // Sort by safety level (high > medium > low > none), then by liquidity
+        sorted.sort((a, b) => {
+          const safetyA = getTokenSafety(a);
+          const safetyB = getTokenSafety(b);
+          const safetyOrder = { high: 3, medium: 2, low: 1, none: 0 };
+          const safetyDiff = safetyOrder[safetyB.safetyLevel] - safetyOrder[safetyA.safetyLevel];
+          if (safetyDiff !== 0) return safetyDiff;
+          return (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0);
+        });
+        break;
+    }
+
+    return sorted;
+  };
+
   const filterAndSortTokens = (pairs: TokenResult[]): TokenResult[] => {
     // Filter for Solana tokens only with some volume
     let filtered = pairs.filter((pair: TokenResult) => {
@@ -276,6 +335,12 @@ export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
     }
   };
 
+  const handleClear = () => {
+    setQuery('');
+    setResults([]);
+    setError(null);
+  };
+
   const copyToClipboard = async (address: string) => {
     try {
       await navigator.clipboard.writeText(address);
@@ -286,7 +351,33 @@ export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
     }
   };
 
-  const toggleWatchlist = (token: TokenResult) => {
+  const toggleWatchlist = async (token: TokenResult) => {
+    // API Mode (Authenticated)
+    if (activeWalletKey) {
+      const isSaved = watchlistMints.has(token.baseToken.address);
+      
+      try {
+        if (isSaved) {
+          await removeFromWatchlist(activeWalletKey, token.baseToken.address);
+          setWatchlistMints(prev => {
+            const next = new Set(prev);
+            next.delete(token.baseToken.address);
+            return next;
+          });
+        } else {
+          await addToWatchlist(activeWalletKey, token.baseToken.address, token.baseToken.symbol);
+          setWatchlistMints(prev => new Set([...prev, token.baseToken.address]));
+        }
+        
+        console.log('[TokenSearch] Dispatching watchlist-updated event (API)');
+        window.dispatchEvent(new Event('watchlist-updated'));
+      } catch (error) {
+        console.error('[TokenSearch] Failed to update watchlist via API:', error);
+      }
+      return;
+    }
+
+    // LocalStorage Mode (Unauthenticated Fallback)
     try {
       const saved = localStorage.getItem('solana-watchlist');
       let watchlist = saved ? JSON.parse(saved) : [];
@@ -395,7 +486,7 @@ export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
       </div>
 
       {/* Search Input */}
-      <div className={`flex gap-2 ${showCollapsedView ? '' : 'mb-4'}`}>
+      <div className={`flex gap-2 ${showCollapsedView ? '' : 'mb-3'}`}>
         <input
           type="text"
           value={query}
@@ -411,7 +502,50 @@ export default function TokenSearch({ onSelectToken }: TokenSearchProps) {
         >
           {loading ? 'Searching...' : 'Search'}
         </button>
+        {(query || results.length > 0 || error) && (
+          <button
+            onClick={handleClear}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors flex items-center gap-1"
+            title="Clear search"
+          >
+            <X className="w-4 h-4" />
+            Clear
+          </button>
+        )}
       </div>
+
+      {/* Search Options */}
+      {!showCollapsedView && (
+        <div className="flex gap-3 mb-4 items-center">
+          {/* Auto-search toggle */}
+          <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoSearch}
+              onChange={(e) => setAutoSearch(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-600 focus:ring-purple-500 focus:ring-offset-gray-900"
+            />
+            <span>Auto-search as you type</span>
+          </label>
+
+          {/* Sort dropdown */}
+          {results.length > 0 && (
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-sm text-gray-400">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'liquidity' | 'volume' | 'marketCap' | 'safety')}
+                className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+              >
+                <option value="liquidity">Liquidity (Highest)</option>
+                <option value="volume">Volume 24h (Highest)</option>
+                <option value="marketCap">Market Cap (Highest)</option>
+                <option value="safety">Safety Score (Best)</option>
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Only show content below if not in collapsed view */}
       {!showCollapsedView && (

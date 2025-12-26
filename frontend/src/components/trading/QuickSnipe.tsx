@@ -2,24 +2,35 @@
 
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Zap } from 'lucide-react';
+import { Zap, Bot } from 'lucide-react';
 import type { StrategyConfig, ExitStrategy, DCAStrategyType } from '@/types';
-import { prepareBuyTransaction, executeBuyTransaction, createDCAOrder, getCurrentPrice } from '@/lib/api';
+import { prepareBuyTransaction, executeBuyTransaction, createDCAOrder, getCurrentPrice, executeBotTrade, createLimitOrder } from '@/lib/api';
 import { VersionedTransaction } from '@solana/web3.js';
 
 interface QuickSnipeProps {
   strategies: Record<ExitStrategy, StrategyConfig> | null;
   onSuccess: () => void;
   selectedToken?: { mint: string; symbol: string } | null;
+  activeWalletKey?: string | null;
+  isIntegrated?: boolean;
 }
 
-export default function QuickSnipe({ strategies, onSuccess, selectedToken }: QuickSnipeProps) {
-  const { publicKey, signTransaction } = useWallet();
+export default function QuickSnipe({ strategies, onSuccess, selectedToken, activeWalletKey, isIntegrated = false }: QuickSnipeProps) {
+  const { signTransaction } = useWallet();
   const [tokenMint, setTokenMint] = useState('');
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [solAmount, setSolAmount] = useState('0.1');
+  const [slippageBps, setSlippageBps] = useState(() => {
+    // Load from localStorage or default to 200 BPS (2%)
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('slippage_preference');
+      return saved ? parseInt(saved) : 200;
+    }
+    return 200;
+  });
   const [entryStrategy, setEntryStrategy] = useState('instant');
   const [strategy, setStrategy] = useState<ExitStrategy>('manual');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [buying, setBuying] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +52,22 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
     }
   }, [selectedToken]);
 
+  // Save slippage preference to localStorage
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('slippage_preference', slippageBps.toString());
+    }
+  }, [slippageBps]);
+
   const handleBuy = async () => {
-    if (!publicKey || !signTransaction) {
+    // Check for wallet connection (either Phantom or Integrated)
+    if (!activeWalletKey) {
+      setError('Wallet not connected');
+      return;
+    }
+    
+    // Check for signing capability if NOT integrated
+    if (!isIntegrated && !signTransaction) {
       setError('Wallet not connected');
       return;
     }
@@ -71,24 +96,16 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
       setSuccess(false);
 
       try {
-        const response = await fetch('http://localhost:3001/api/limit-orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            walletPublicKey: publicKey.toString(),
-            tokenMint,
-            tokenSymbol,
-            targetPrice: price,
-            solAmount: amount,
-            exitStrategy: strategy,
-            slippageBps: 200,
-            expiresIn: expiresIn ? parseInt(expiresIn) : undefined
-          })
+        await createLimitOrder({
+          walletPublicKey: activeWalletKey,
+          tokenMint,
+          tokenSymbol,
+          targetPrice: price,
+          solAmount: amount,
+          exitStrategy: strategy,
+          slippageBps: slippageBps,
+          expiresIn: expiresIn ? parseInt(expiresIn) : undefined
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to create limit order');
-        }
 
         setSuccess(true);
         setTokenMint('');
@@ -137,7 +154,7 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
         }
 
         await createDCAOrder({
-          walletPublicKey: publicKey.toString(),
+          walletPublicKey: activeWalletKey,
           tokenMint,
           tokenSymbol,
           totalSolAmount: amount,
@@ -145,8 +162,9 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
           intervalMinutes: interval,
           strategyType: dcaStrategy,
           exitStrategy: strategy,
-          slippageBps: 200,
-          referencePrice
+          slippageBps: slippageBps,
+          referencePrice,
+          isPrivate
         });
 
         setSuccess(true);
@@ -171,32 +189,46 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
     setSuccess(false);
 
     try {
-      // Prepare buy transaction
-      const data = await prepareBuyTransaction({
-        walletPublicKey: publicKey.toString(),
-        tokenMint,
-        solAmount: amount,
-        slippageBps: 200,
-        strategy
-      });
-
-      // Deserialize transaction
-      const txBuffer = Buffer.from(data.transaction, 'base64');
-      const transaction = VersionedTransaction.deserialize(txBuffer);
-
-      // Sign transaction
-      const signedTx = await signTransaction(transaction);
-      const signedTxBase64 = Buffer.from(signedTx.serialize()).toString('base64');
-
-      // Execute buy
-      const result = await executeBuyTransaction({
-        walletPublicKey: publicKey.toString(),
-        signedTransaction: signedTxBase64,
-        tokenMint,
-        solAmount: amount,
-        strategy,
-        expectedOutput: data.expectedOutput // Pass token amount from quote
-      });
+      if (isIntegrated) {
+         // --- INTEGRATED BOT WALLET FLOW ---
+         await executeBotTrade({
+            tokenMint,
+            solAmount: amount,
+            strategy,
+            slippageBps,
+            isPrivate
+         });
+      } else {
+         // --- CONNECTED BROWSER WALLET FLOW ---
+         if (!signTransaction) throw new Error("Wallet not connected"); // double check
+         
+         // Prepare buy transaction
+         const data = await prepareBuyTransaction({
+           walletPublicKey: activeWalletKey,
+           tokenMint,
+           solAmount: amount,
+           slippageBps: slippageBps,
+           strategy
+         });
+   
+         // Deserialize transaction
+         const txBuffer = Buffer.from(data.transaction, 'base64');
+         const transaction = VersionedTransaction.deserialize(txBuffer);
+   
+         // Sign transaction
+         const signedTx = await signTransaction(transaction);
+         const signedTxBase64 = Buffer.from(signedTx.serialize()).toString('base64');
+   
+         // Execute buy
+         await executeBuyTransaction({
+           walletPublicKey: activeWalletKey,
+           signedTransaction: signedTxBase64,
+           tokenMint,
+           solAmount: amount,
+           strategy,
+           expectedOutput: data.expectedOutput // Pass token amount from quote
+         });
+      }
 
       setSuccess(true);
       setTokenMint('');
@@ -249,6 +281,25 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
             min="0.01"
             className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-600"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Slippage Tolerance</label>
+          <select
+            value={slippageBps}
+            onChange={(e) => setSlippageBps(Number(e.target.value))}
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-600"
+          >
+            <option value={50}>0.5% (Low Risk - May Fail)</option>
+            <option value={100}>1% (Recommended for Stable Tokens)</option>
+            <option value={200}>2% (Default - Balanced)</option>
+            <option value={300}>3% (Moderate Risk)</option>
+            <option value={500}>5% (High Risk - Volatile Tokens)</option>
+            <option value={1000}>10% (Extreme Risk - Meme Coins)</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Max price impact: {((parseFloat(solAmount) * slippageBps) / 10000).toFixed(4)} SOL ({(slippageBps / 100).toFixed(1)}%)
+          </p>
         </div>
 
         <div>
@@ -305,6 +356,26 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
                   />
                   <p className="text-xs text-gray-500 mt-1">Leave empty for no expiration</p>
                 </div>
+
+                {isIntegrated && (
+                  <div className="flex items-center justify-between p-2 bg-emerald-900/10 border border-emerald-900/30 rounded mt-2">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                      <div>
+                        <p className="text-xs font-semibold text-white">Stealth Limit Order</p>
+                        <p className="text-[9px] text-gray-400">Funds moved privately on trigger</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsPrivate(!isPrivate)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isPrivate ? 'bg-emerald-600' : 'bg-gray-700'}`}
+                    >
+                      <span
+                        className={`${isPrivate ? 'translate-x-5' : 'translate-x-1'} inline-block h-3 w-3 transform rounded-full bg-white transition-transform`}
+                      />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -361,6 +432,26 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
                     Total duration: {Math.floor((parseInt(intervalMinutes || '0') * parseInt(numberOfBuys || '0')) / 60)}h {(parseInt(intervalMinutes || '0') * parseInt(numberOfBuys || '0')) % 60}m
                   </p>
                 </div>
+
+                {isIntegrated && (
+                  <div className="flex items-center justify-between p-2 bg-emerald-900/10 border border-emerald-900/30 rounded mt-2">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                      <div>
+                        <p className="text-xs font-semibold text-white">Private DCA</p>
+                        <p className="text-[9px] text-gray-400">Fresh burner wallet per buy</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsPrivate(!isPrivate)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isPrivate ? 'bg-emerald-600' : 'bg-gray-700'}`}
+                    >
+                      <span
+                        className={`${isPrivate ? 'translate-x-5' : 'translate-x-1'} inline-block h-3 w-3 transform rounded-full bg-white transition-transform`}
+                      />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -374,30 +465,30 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
             className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-600"
           >
             <optgroup label="📋 MANUAL">
-              <option value="manual">🎮 Manual Control</option>
+              <option value="manual">🎮 Manual - You control all exits</option>
             </optgroup>
 
             <optgroup label="⚡ FAST TRADING (Minutes)">
-              <option value="scalping">⚡ Scalping (1-3min)</option>
-              <option value="aggressive">⚡ Aggressive (8min)</option>
-              <option value="moderate">⚖️ Moderate (20min)</option>
-              <option value="slow">🐢 Slow (50min)</option>
+              <option value="scalping">⚡ Scalping - Quick 1-3min profit grabs</option>
+              <option value="aggressive">⚡ Aggressive - Fast 8min momentum plays</option>
+              <option value="moderate">⚖️ Moderate - Balanced 20min strategy</option>
+              <option value="slow">🐢 Slow - Patient 50min accumulation</option>
             </optgroup>
 
             <optgroup label="💎 HODL (Days-Weeks)">
-              <option value="hodl1">💎 HODL 1 (hours-days)</option>
-              <option value="hodl2">💎 HODL 2 (days-weeks)</option>
-              <option value="hodl3">💎 HODL 3 (weeks-months)</option>
-              <option value="swing">📊 Swing (multi-day)</option>
+              <option value="hodl1">💎 HODL 1 - Hours to days hold</option>
+              <option value="hodl2">💎 HODL 2 - Days to weeks hold</option>
+              <option value="hodl3">💎 HODL 3 - Weeks to months hold</option>
+              <option value="swing">📊 Swing - Multi-day trend capture</option>
             </optgroup>
 
             <optgroup label="🚀 ADVANCED">
-              <option value="breakout">🚀 Breakout (momentum)</option>
-              <option value="trailing">📈 Trailing Stop</option>
-              <option value="grid">⚙️ Grid Trading</option>
-              <option value="conservative">🛡️ Conservative</option>
-              <option value="takeProfit">💰 Take Profit Only (risky)</option>
-              <option value="dca">💵 DCA Exit</option>
+              <option value="breakout">🚀 Breakout - Ride momentum spikes</option>
+              <option value="trailing">📈 Trailing Stop - Follow price up</option>
+              <option value="grid">⚙️ Grid - Automated buy/sell zones</option>
+              <option value="conservative">🛡️ Conservative - Protect capital first</option>
+              <option value="takeProfit">💰 Take Profit Only - No stop loss</option>
+              <option value="dca">💵 DCA Exit - Staged selling over time</option>
             </optgroup>
           </select>
 
@@ -455,6 +546,26 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
           )}
         </div>
 
+        {isIntegrated && entryStrategy === 'instant' && (
+           <div className="flex items-center justify-between p-3 bg-emerald-900/10 border border-emerald-900/30 rounded-lg">
+              <div className="flex items-center gap-2">
+                 <Bot className="w-4 h-4 text-emerald-400" />
+                 <div>
+                    <p className="text-sm font-semibold text-white">Private Trade</p>
+                    <p className="text-[10px] text-gray-400">Uses ShadowWire Shield & Ephemeral Wallet</p>
+                 </div>
+              </div>
+              <button
+                onClick={() => setIsPrivate(!isPrivate)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isPrivate ? 'bg-emerald-600' : 'bg-gray-700'}`}
+              >
+                <span
+                  className={`${isPrivate ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                />
+              </button>
+           </div>
+        )}
+
         {error && (
           <div className="text-sm text-red-400 bg-red-900/20 p-3 rounded-lg">
             {error}
@@ -469,12 +580,12 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken }: Qui
 
         <button
           onClick={handleBuy}
-          disabled={buying || !publicKey}
+          disabled={buying || !activeWalletKey}
           className="w-full px-4 py-3 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all"
         >
           {buying
             ? 'Processing...'
-            : !publicKey
+            : !activeWalletKey
             ? 'Connect Wallet'
             : entryStrategy === 'limit'
             ? 'Create Limit Order'

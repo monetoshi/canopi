@@ -1,15 +1,16 @@
 /**
  * Solana Trading Bot - DCA Order Manager
  * Manages Dollar Cost Averaging (DCA) orders for automated token purchases over time
+ * Uses Drizzle ORM + PGLite for persistence
  */
 
 import { DCAOrder, DCABuyExecution, DCAStatistics, DCAStrategyType } from '../types/dca.types';
 import { ExitStrategy } from '../types';
-import * as fs from 'fs';
-import * as path from 'path';
+import { logger } from '../utils/logger.util';
+import { db } from '../db/index';
+import { dcaOrders as dcaOrdersTable, NewDCAOrder } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-
-const DCA_ORDERS_FILE = path.join(__dirname, '../../data/dca-orders.json');
 
 /**
  * DCA Order Manager
@@ -17,56 +18,63 @@ const DCA_ORDERS_FILE = path.join(__dirname, '../../data/dca-orders.json');
  */
 export class DCAOrderManager {
   private orders: Map<string, DCAOrder> = new Map();
+  private initialized = false;
+  private initPromise: Promise<void>;
 
   constructor() {
-    this.loadOrders();
+    this.initPromise = this.initialize();
   }
 
   /**
-   * Load orders from disk
+   * Wait for initialization to complete
    */
-  private loadOrders(): void {
-    try {
-      const dataDir = path.dirname(DCA_ORDERS_FILE);
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-
-      if (fs.existsSync(DCA_ORDERS_FILE)) {
-        const data = fs.readFileSync(DCA_ORDERS_FILE, 'utf-8');
-        const ordersArray: DCAOrder[] = JSON.parse(data);
-
-        this.orders.clear();
-        for (const order of ordersArray) {
-          this.orders.set(order.id, order);
-        }
-
-        console.log(`[DCAOrderManager] Loaded ${ordersArray.length} DCA orders from disk`);
-      } else {
-        console.log('[DCAOrderManager] No saved DCA orders found, starting fresh');
-      }
-    } catch (error) {
-      console.error('[DCAOrderManager] Error loading DCA orders:', error);
-    }
+  public async waitForReady(): Promise<void> {
+    return this.initPromise;
   }
 
   /**
-   * Save orders to disk
+   * Initialize cache from database
    */
-  private saveOrders(): void {
+  private async initialize() {
     try {
-      const ordersArray = Array.from(this.orders.values());
-      fs.writeFileSync(DCA_ORDERS_FILE, JSON.stringify(ordersArray, null, 2));
-      console.log(`[DCAOrderManager] Saved ${ordersArray.length} DCA orders to disk`);
+      const allOrders = await db.select().from(dcaOrdersTable);
+      
+      this.orders.clear();
+      for (const ord of allOrders) {
+        const order: DCAOrder = {
+          id: ord.id,
+          walletPublicKey: ord.walletPublicKey,
+          tokenMint: ord.tokenMint,
+          tokenSymbol: ord.tokenSymbol || undefined,
+          strategyType: ord.strategyType as DCAStrategyType,
+          totalSolAmount: parseFloat(ord.totalSolAmount),
+          numberOfBuys: ord.numberOfBuys,
+          intervalMinutes: ord.intervalMinutes,
+          exitStrategy: ord.exitStrategy as ExitStrategy,
+          slippageBps: ord.slippageBps || 200,
+          currentBuy: ord.currentBuy || 0,
+          status: ord.status as any,
+          createdAt: ord.createdAt.getTime(),
+          lastBuyAt: ord.lastBuyTime ? ord.lastBuyTime.getTime() : undefined,
+          nextBuyAt: ord.nextBuyTime ? ord.nextBuyTime.getTime() : undefined,
+          completedBuys: (ord.completedBuys as any) || [],
+          referencePrice: ord.referencePrice ? parseFloat(ord.referencePrice) : undefined,
+          isPrivate: ord.isPrivate || false
+        };
+        this.orders.set(order.id, order);
+      }
+      
+      this.initialized = true;
+      console.log(`[DCAOrderManager] Loaded ${allOrders.length} DCA orders from database`);
     } catch (error) {
-      console.error('[DCAOrderManager] Error saving DCA orders:', error);
+      console.error('[DCAOrderManager] Error initializing from database:', error);
     }
   }
 
   /**
    * Create a new DCA order
    */
-  createOrder(params: {
+  async createOrder(params: {
     walletPublicKey: string;
     tokenMint: string;
     tokenSymbol?: string;
@@ -77,7 +85,8 @@ export class DCAOrderManager {
     exitStrategy: ExitStrategy;
     slippageBps?: number;
     referencePrice?: number;
-  }): DCAOrder {
+    isPrivate?: boolean;
+  }): Promise<DCAOrder> {
     // Validate inputs
     if (params.numberOfBuys < 2) {
       throw new Error('Number of buys must be at least 2');
@@ -112,13 +121,40 @@ export class DCAOrderManager {
       createdAt: now,
       nextBuyAt: now, // First buy immediately
       completedBuys: [],
-      referencePrice: params.referencePrice
+      referencePrice: params.referencePrice,
+      isPrivate: !!params.isPrivate
     };
 
+    // Update Cache
     this.orders.set(order.id, order);
-    this.saveOrders();
 
-    console.log(`[DCAOrderManager] Created DCA order ${order.id} for ${params.tokenMint.slice(0, 8)}... - ${params.numberOfBuys} buys of ${params.totalSolAmount} SOL`);
+    // Persist to DB
+    try {
+      const newOrder: NewDCAOrder = {
+        id: order.id,
+        walletPublicKey: order.walletPublicKey,
+        tokenMint: order.tokenMint,
+        tokenSymbol: order.tokenSymbol,
+        strategyType: order.strategyType,
+        totalSolAmount: order.totalSolAmount.toString(),
+        numberOfBuys: order.numberOfBuys,
+        intervalMinutes: order.intervalMinutes,
+        exitStrategy: order.exitStrategy,
+        slippageBps: order.slippageBps,
+        currentBuy: order.currentBuy,
+        status: order.status,
+        createdAt: new Date(order.createdAt),
+        nextBuyTime: order.nextBuyAt ? new Date(order.nextBuyAt) : null,
+        completedBuys: order.completedBuys,
+        referencePrice: order.referencePrice?.toString(),
+        isPrivate: order.isPrivate
+      };
+
+      await db.insert(dcaOrdersTable).values(newOrder);
+      console.log(`[DCAOrderManager] Created DCA order ${order.id} for ${params.tokenMint.slice(0, 8)}...`);
+    } catch (error) {
+      console.error('[DCAOrderManager] Error saving DCA order to DB:', error);
+    }
 
     return order;
   }
@@ -164,83 +200,95 @@ export class DCAOrderManager {
   /**
    * Update order status
    */
-  updateOrderStatus(orderId: string, status: DCAOrder['status']): boolean {
+  async updateOrderStatus(orderId: string, status: DCAOrder['status']): Promise<boolean> {
     const order = this.orders.get(orderId);
     if (!order) return false;
 
     order.status = status;
-    this.saveOrders();
-
-    console.log(`[DCAOrderManager] Updated order ${orderId} status to ${status}`);
-    return true;
+    
+    // Update DB
+    try {
+      await db.update(dcaOrdersTable)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(dcaOrdersTable.id, orderId));
+      
+      console.log(`[DCAOrderManager] Updated order ${orderId} status to ${status}`);
+      return true;
+    } catch (error) {
+      console.error('[DCAOrderManager] Error updating order status in DB:', error);
+      return false;
+    }
   }
 
   /**
    * Pause an order
    */
-  pauseOrder(orderId: string): boolean {
+  async pauseOrder(orderId: string): Promise<boolean> {
     const order = this.orders.get(orderId);
     if (!order) return false;
 
     if (order.status !== 'active') {
-      console.log(`[DCAOrderManager] Cannot pause order ${orderId} - not active`);
       return false;
     }
 
-    order.status = 'paused';
-    this.saveOrders();
-
-    console.log(`[DCAOrderManager] Paused order ${orderId}`);
-    return true;
+    return this.updateOrderStatus(orderId, 'paused');
   }
 
   /**
    * Resume a paused order
    */
-  resumeOrder(orderId: string): boolean {
+  async resumeOrder(orderId: string): Promise<boolean> {
     const order = this.orders.get(orderId);
     if (!order) return false;
 
     if (order.status !== 'paused') {
-      console.log(`[DCAOrderManager] Cannot resume order ${orderId} - not paused`);
       return false;
     }
 
     order.status = 'active';
     // Recalculate next buy time
     order.nextBuyAt = Date.now() + (order.intervalMinutes * 60000);
-    this.saveOrders();
-
-    console.log(`[DCAOrderManager] Resumed order ${orderId}`);
-    return true;
+    
+    // Update DB
+    try {
+      await db.update(dcaOrdersTable)
+        .set({ 
+          status: 'active', 
+          nextBuyTime: new Date(order.nextBuyAt),
+          updatedAt: new Date() 
+        })
+        .where(eq(dcaOrdersTable.id, orderId));
+        
+      console.log(`[DCAOrderManager] Resumed order ${orderId}`);
+      return true;
+    } catch (error) {
+      console.error('[DCAOrderManager] Error resuming order in DB:', error);
+      return false;
+    }
   }
 
   /**
    * Cancel an order
    */
-  cancelOrder(orderId: string): boolean {
+  async cancelOrder(orderId: string): Promise<boolean> {
     const order = this.orders.get(orderId);
     if (!order) return false;
 
     if (order.status === 'completed') {
-      console.log(`[DCAOrderManager] Cannot cancel order ${orderId} - already completed`);
       return false;
     }
 
-    order.status = 'cancelled';
-    this.saveOrders();
-
-    console.log(`[DCAOrderManager] Cancelled order ${orderId}`);
-    return true;
+    return this.updateOrderStatus(orderId, 'cancelled');
   }
 
   /**
    * Record a completed buy execution
    */
-  recordBuyExecution(orderId: string, execution: DCABuyExecution): boolean {
+  async recordBuyExecution(orderId: string, execution: DCABuyExecution): Promise<boolean> {
     const order = this.orders.get(orderId);
     if (!order) return false;
 
+    // Update Cache
     order.completedBuys.push(execution);
     order.currentBuy = execution.buyNumber;
     order.lastBuyAt = execution.timestamp;
@@ -254,11 +302,25 @@ export class DCAOrderManager {
       order.nextBuyAt = undefined;
     }
 
-    this.saveOrders();
+    // Update DB
+    try {
+      await db.update(dcaOrdersTable)
+        .set({
+          currentBuy: order.currentBuy,
+          lastBuyTime: new Date(order.lastBuyAt),
+          nextBuyTime: order.nextBuyAt ? new Date(order.nextBuyAt) : null,
+          completedBuys: order.completedBuys,
+          status: order.status,
+          updatedAt: new Date()
+        })
+        .where(eq(dcaOrdersTable.id, orderId));
 
-    console.log(`[DCAOrderManager] Recorded buy ${execution.buyNumber}/${order.numberOfBuys} for order ${orderId}`);
-
-    return true;
+      console.log(`[DCAOrderManager] Recorded buy ${execution.buyNumber}/${order.numberOfBuys} for order ${orderId}`);
+      return true;
+    } catch (error) {
+      console.error('[DCAOrderManager] Error recording buy execution in DB:', error);
+      return false;
+    }
   }
 
   /**
@@ -329,23 +391,31 @@ export class DCAOrderManager {
   /**
    * Clean up old completed/cancelled orders
    */
-  cleanup(olderThanDays: number = 30): number {
+  async cleanup(olderThanDays: number = 30): Promise<number> {
     const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
     let removed = 0;
 
+    const idsToRemove: string[] = [];
     for (const [id, order] of this.orders.entries()) {
       if (
         (order.status === 'completed' || order.status === 'cancelled') &&
         order.createdAt < cutoffTime
       ) {
-        this.orders.delete(id);
-        removed++;
+        idsToRemove.push(id);
       }
     }
 
-    if (removed > 0) {
-      this.saveOrders();
-      console.log(`[DCAOrderManager] Cleaned up ${removed} old DCA orders`);
+    if (idsToRemove.length > 0) {
+      try {
+        for (const id of idsToRemove) {
+          await db.delete(dcaOrdersTable).where(eq(dcaOrdersTable.id, id));
+          this.orders.delete(id);
+          removed++;
+        }
+        console.log(`[DCAOrderManager] Cleaned up ${removed} old DCA orders from DB`);
+      } catch (error) {
+        console.error('[DCAOrderManager] Error cleaning up old orders in DB:', error);
+      }
     }
 
     return removed;
@@ -460,6 +530,19 @@ export class DCAOrderManager {
       totalSolAllocated,
       totalSolSpent
     };
+  }
+
+  /**
+   * Clear all orders (for testing)
+   */
+  async clear(): Promise<void> {
+    this.orders.clear();
+    try {
+      await db.delete(dcaOrdersTable);
+      console.log('[DCAOrderManager] All DCA orders cleared from DB');
+    } catch (error) {
+      console.error('[DCAOrderManager] Error clearing DB:', error);
+    }
   }
 }
 

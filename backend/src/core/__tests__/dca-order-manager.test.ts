@@ -19,7 +19,7 @@ describe('DCAOrderManager', () => {
   const mockWalletPublicKey = '2KrVQg1GFW2Q4wsARdi5fVpsaNXVETPp15YLZCG2uKJu';
   const mockTokenMint = '8avjtjHAHFqp4g2RR9ALAGBpSTqKPZR8nRbzSTwZERA';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks before each test
     jest.clearAllMocks();
 
@@ -34,8 +34,8 @@ describe('DCAOrderManager', () => {
   });
 
   describe('Order Creation', () => {
-    test('should create a new DCA order with all required fields', () => {
-      const order = manager.createOrder({
+    test('should create a new DCA order with all required fields', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         tokenSymbol: 'ZERA',
@@ -67,11 +67,11 @@ describe('DCAOrderManager', () => {
       expect(order.referencePrice).toBe(0.025);
     });
 
-    test('should create order with default slippage when not provided', () => {
-      const order = manager.createOrder({
+    test('should create order with default slippage when not provided', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
-        strategyType: 'fixed-split',
+        strategyType: 'time-based',
         totalSolAmount: 1.0,
         numberOfBuys: 5,
         intervalMinutes: 30,
@@ -81,8 +81,8 @@ describe('DCAOrderManager', () => {
       expect(order.slippageBps).toBe(200);
     });
 
-    test('should create price-based order with reference price', () => {
-      const order = manager.createOrder({
+    test('should create price-based order with reference price', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'price-based',
@@ -97,11 +97,11 @@ describe('DCAOrderManager', () => {
       expect(order.referencePrice).toBe(0.05);
     });
 
-    test('should set nextBuyAt to interval after creation', () => {
+    test('should set nextBuyAt to interval after creation', async () => {
       const beforeCreate = Date.now();
       const intervalMinutes = 30;
 
-      const order = manager.createOrder({
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -118,9 +118,9 @@ describe('DCAOrderManager', () => {
       expect(order.nextBuyAt).toBeLessThanOrEqual(afterCreate);
     });
 
-    test('should validate minimum number of buys', () => {
-      expect(() => {
-        manager.createOrder({
+    test('should validate minimum number of buys', async () => {
+      await expect(async () => {
+        await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'time-based',
@@ -129,12 +129,12 @@ describe('DCAOrderManager', () => {
           intervalMinutes: 60,
           exitStrategy: 'aggressive' as ExitStrategy
         });
-      }).toThrow('Number of buys must be at least 2');
+      }).rejects.toThrow('Number of buys must be at least 2');
     });
 
-    test('should validate maximum number of buys', () => {
-      expect(() => {
-        manager.createOrder({
+    test('should validate maximum number of buys', async () => {
+      await expect(async () => {
+        await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'time-based',
@@ -143,12 +143,12 @@ describe('DCAOrderManager', () => {
           intervalMinutes: 60,
           exitStrategy: 'aggressive' as ExitStrategy
         });
-      }).toThrow('Number of buys cannot exceed 100');
+      }).rejects.toThrow('Number of buys cannot exceed 100');
     });
 
-    test('should validate minimum interval', () => {
-      expect(() => {
-        manager.createOrder({
+    test('should validate minimum interval', async () => {
+      await expect(async () => {
+        await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'time-based',
@@ -157,12 +157,12 @@ describe('DCAOrderManager', () => {
           intervalMinutes: 0,
           exitStrategy: 'aggressive' as ExitStrategy
         });
-      }).toThrow('Interval must be at least 1 minute');
+      }).rejects.toThrow('Interval must be at least 1 minute');
     });
 
-    test('should validate positive SOL amount', () => {
-      expect(() => {
-        manager.createOrder({
+    test('should validate positive SOL amount', async () => {
+      await expect(async () => {
+        await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'time-based',
@@ -171,11 +171,11 @@ describe('DCAOrderManager', () => {
           intervalMinutes: 60,
           exitStrategy: 'aggressive' as ExitStrategy
         });
-      }).toThrow('Total SOL amount must be positive');
+      }).rejects.toThrow('Total SOL amount must be positive');
     });
 
-    test('should save order to disk after creation', () => {
-      manager.createOrder({
+    test('should save order to disk after creation', async () => {
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -190,9 +190,9 @@ describe('DCAOrderManager', () => {
   });
 
   describe('Order Retrieval', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // Create test orders
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -202,7 +202,7 @@ describe('DCAOrderManager', () => {
         exitStrategy: 'aggressive' as ExitStrategy
       });
 
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: 'DifferentToken123',
         strategyType: 'price-based',
@@ -213,10 +213,10 @@ describe('DCAOrderManager', () => {
         referencePrice: 0.05
       });
 
-      manager.createOrder({
+      await manager.createOrder({
         walletPublicKey: 'DifferentWallet123',
         tokenMint: mockTokenMint,
-        strategyType: 'fixed-split',
+        strategyType: 'time-based',
         totalSolAmount: 0.5,
         numberOfBuys: 4,
         intervalMinutes: 30,
@@ -224,25 +224,25 @@ describe('DCAOrderManager', () => {
       });
     });
 
-    test('should get all orders', () => {
+    test('should get all orders', async () => {
       const orders = manager.getAllOrders();
       expect(orders).toHaveLength(3);
     });
 
-    test('should get orders by wallet address', () => {
+    test('should get orders by wallet address', async () => {
       const orders = manager.getOrdersByWallet(mockWalletPublicKey);
       expect(orders).toHaveLength(2);
       expect(orders.every(o => o.walletPublicKey === mockWalletPublicKey)).toBe(true);
     });
 
-    test('should get active orders by wallet', () => {
+    test('should get active orders by wallet', async () => {
       const orders = manager.getActiveOrdersByWallet(mockWalletPublicKey);
       expect(orders).toHaveLength(2);
       expect(orders.every(o => o.walletPublicKey === mockWalletPublicKey && o.status === 'active')).toBe(true);
     });
 
-    test('should get order by ID', () => {
-      const createdOrder = manager.createOrder({
+    test('should get order by ID', async () => {
+      const createdOrder = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -257,12 +257,12 @@ describe('DCAOrderManager', () => {
       expect(retrievedOrder?.id).toBe(createdOrder.id);
     });
 
-    test('should return undefined for non-existent order ID', () => {
+    test('should return undefined for non-existent order ID', async () => {
       const order = manager.getOrder('non-existent-id');
       expect(order).toBeUndefined();
     });
 
-    test('should get all active orders', () => {
+    test('should get all active orders', async () => {
       const orders = manager.getActiveOrders();
       expect(orders).toHaveLength(3);
       expect(orders.every(o => o.status === 'active')).toBe(true);
@@ -272,8 +272,8 @@ describe('DCAOrderManager', () => {
   describe('Order Lifecycle Management', () => {
     let orderId: string;
 
-    beforeEach(() => {
-      const order = manager.createOrder({
+    beforeEach(async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -285,34 +285,34 @@ describe('DCAOrderManager', () => {
       orderId = order.id;
     });
 
-    test('should pause active order', () => {
-      const success = manager.pauseOrder(orderId);
+    test('should pause active order', async () => {
+      const success = await manager.pauseOrder(orderId);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('paused');
     });
 
-    test('should not pause non-active order', () => {
-      manager.pauseOrder(orderId);
-      const success = manager.pauseOrder(orderId);
+    test('should not pause non-active order', async () => {
+      await manager.pauseOrder(orderId);
+      const success = await manager.pauseOrder(orderId);
       expect(success).toBe(false);
     });
 
-    test('should resume paused order', () => {
-      manager.pauseOrder(orderId);
-      const success = manager.resumeOrder(orderId);
+    test('should resume paused order', async () => {
+      await manager.pauseOrder(orderId);
+      const success = await manager.resumeOrder(orderId);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('active');
     });
 
-    test('should recalculate nextBuyAt when resuming', () => {
-      manager.pauseOrder(orderId);
+    test('should recalculate nextBuyAt when resuming', async () => {
+      await manager.pauseOrder(orderId);
 
       const beforeResume = Date.now();
-      manager.resumeOrder(orderId);
+      await manager.resumeOrder(orderId);
       const afterResume = Date.now();
 
       const order = manager.getOrder(orderId);
@@ -323,46 +323,46 @@ describe('DCAOrderManager', () => {
       expect(order?.nextBuyAt).toBeLessThanOrEqual(expectedMax);
     });
 
-    test('should not resume non-paused order', () => {
-      const success = manager.resumeOrder(orderId);
+    test('should not resume non-paused order', async () => {
+      const success = await manager.resumeOrder(orderId);
       expect(success).toBe(false);
     });
 
-    test('should cancel active order', () => {
-      const success = manager.cancelOrder(orderId);
+    test('should cancel active order', async () => {
+      const success = await manager.cancelOrder(orderId);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('cancelled');
     });
 
-    test('should cancel paused order', () => {
-      manager.pauseOrder(orderId);
-      const success = manager.cancelOrder(orderId);
+    test('should cancel paused order', async () => {
+      await manager.pauseOrder(orderId);
+      const success = await manager.cancelOrder(orderId);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
       expect(order?.status).toBe('cancelled');
     });
 
-    test('should not cancel completed order', () => {
-      manager.updateOrderStatus(orderId, 'completed');
-      const success = manager.cancelOrder(orderId);
+    test('should not cancel completed order', async () => {
+      await manager.updateOrderStatus(orderId, 'completed');
+      const success = await manager.cancelOrder(orderId);
       expect(success).toBe(false);
     });
 
-    test('should return false when managing non-existent order', () => {
-      expect(manager.pauseOrder('non-existent')).toBe(false);
-      expect(manager.resumeOrder('non-existent')).toBe(false);
-      expect(manager.cancelOrder('non-existent')).toBe(false);
+    test('should return false when managing non-existent order', async () => {
+      expect(await manager.pauseOrder('non-existent')).toBe(false);
+      expect(await manager.resumeOrder('non-existent')).toBe(false);
+      expect(await manager.cancelOrder('non-existent')).toBe(false);
     });
   });
 
   describe('Buy Execution Tracking', () => {
     let orderId: string;
 
-    beforeEach(() => {
-      const order = manager.createOrder({
+    beforeEach(async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -374,7 +374,7 @@ describe('DCAOrderManager', () => {
       orderId = order.id;
     });
 
-    test('should record buy execution', () => {
+    test('should record buy execution', async () => {
       const execution = {
         buyNumber: 1,
         timestamp: Date.now(),
@@ -385,7 +385,7 @@ describe('DCAOrderManager', () => {
         positionMint: mockTokenMint
       };
 
-      const success = manager.recordBuyExecution(orderId, execution);
+      const success = await manager.recordBuyExecution(orderId, execution);
       expect(success).toBe(true);
 
       const order = manager.getOrder(orderId);
@@ -395,7 +395,7 @@ describe('DCAOrderManager', () => {
       expect(order?.lastBuyAt).toBe(execution.timestamp);
     });
 
-    test('should calculate next buy time after execution', () => {
+    test('should calculate next buy time after execution', async () => {
       const executionTime = Date.now();
       const execution = {
         buyNumber: 1,
@@ -407,14 +407,14 @@ describe('DCAOrderManager', () => {
         positionMint: mockTokenMint
       };
 
-      manager.recordBuyExecution(orderId, execution);
+      await manager.recordBuyExecution(orderId, execution);
 
       const order = manager.getOrder(orderId);
       const expectedNextBuy = executionTime + (60 * 60000);
       expect(order?.nextBuyAt).toBe(expectedNextBuy);
     });
 
-    test('should mark order as completed after all buys', () => {
+    test('should mark order as completed after all buys', async () => {
       for (let i = 1; i <= 5; i++) {
         const execution = {
           buyNumber: i,
@@ -425,7 +425,7 @@ describe('DCAOrderManager', () => {
           signature: `sig${i}`,
           positionMint: mockTokenMint
         };
-        manager.recordBuyExecution(orderId, execution);
+        await manager.recordBuyExecution(orderId, execution);
       }
 
       const order = manager.getOrder(orderId);
@@ -434,7 +434,7 @@ describe('DCAOrderManager', () => {
       expect(order?.currentBuy).toBe(5);
     });
 
-    test('should return false when recording to non-existent order', () => {
+    test('should return false when recording to non-existent order', async () => {
       const execution = {
         buyNumber: 1,
         timestamp: Date.now(),
@@ -445,15 +445,15 @@ describe('DCAOrderManager', () => {
         positionMint: mockTokenMint
       };
 
-      const success = manager.recordBuyExecution('non-existent', execution);
+      const success = await manager.recordBuyExecution('non-existent', execution);
       expect(success).toBe(false);
     });
   });
 
   describe('DCA Calculation Logic', () => {
     describe('Time-based DCA', () => {
-      test('should calculate equal distribution for time-based strategy', () => {
-        const order = manager.createOrder({
+      test('should calculate equal distribution for time-based strategy', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'time-based',
@@ -467,8 +467,8 @@ describe('DCAOrderManager', () => {
         expect(amount).toBe(0.2); // 1.0 / 5
       });
 
-      test('should recalculate remaining budget after buys', () => {
-        const order = manager.createOrder({
+      test('should recalculate remaining budget after buys', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'time-based',
@@ -479,7 +479,7 @@ describe('DCAOrderManager', () => {
         });
 
         // Execute first buy
-        manager.recordBuyExecution(order.id, {
+        await manager.recordBuyExecution(order.id, {
           buyNumber: 1,
           timestamp: Date.now(),
           solAmount: 0.2,
@@ -496,11 +496,11 @@ describe('DCAOrderManager', () => {
     });
 
     describe('Fixed-split DCA', () => {
-      test('should calculate equal distribution for fixed-split strategy', () => {
-        const order = manager.createOrder({
+      test('should calculate equal distribution for fixed-split strategy', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
-          strategyType: 'fixed-split',
+          strategyType: 'time-based',
           totalSolAmount: 2.0,
           numberOfBuys: 10,
           intervalMinutes: 30,
@@ -513,8 +513,8 @@ describe('DCAOrderManager', () => {
     });
 
     describe('Price-based DCA', () => {
-      test('should buy more when price drops', () => {
-        const order = manager.createOrder({
+      test('should buy more when price drops', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'price-based',
@@ -533,8 +533,8 @@ describe('DCAOrderManager', () => {
         expect(amount).toBeCloseTo(expectedAmount, 4);
       });
 
-      test('should buy less when price rises', () => {
-        const order = manager.createOrder({
+      test('should buy less when price rises', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'price-based',
@@ -553,8 +553,8 @@ describe('DCAOrderManager', () => {
         expect(amount).toBeCloseTo(expectedAmount, 4);
       });
 
-      test('should clamp adjustment to 50% minimum', () => {
-        const order = manager.createOrder({
+      test('should clamp adjustment to 50% minimum', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'price-based',
@@ -573,8 +573,8 @@ describe('DCAOrderManager', () => {
         expect(amount).toBeCloseTo(minAmount, 4);
       });
 
-      test('should clamp adjustment to 200% maximum', () => {
-        const order = manager.createOrder({
+      test('should clamp adjustment to 200% maximum', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'price-based',
@@ -593,8 +593,8 @@ describe('DCAOrderManager', () => {
         expect(amount).toBeCloseTo(maxAmount, 4);
       });
 
-      test('should fallback to equal distribution when no price data', () => {
-        const order = manager.createOrder({
+      test('should fallback to equal distribution when no price data', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'price-based',
@@ -610,8 +610,8 @@ describe('DCAOrderManager', () => {
         expect(amount).toBe(0.2); // Equal distribution
       });
 
-      test('should fallback to equal distribution when no reference price', () => {
-        const order = manager.createOrder({
+      test('should fallback to equal distribution when no reference price', async () => {
+        const order = await manager.createOrder({
           walletPublicKey: mockWalletPublicKey,
           tokenMint: mockTokenMint,
           strategyType: 'price-based',
@@ -630,8 +630,8 @@ describe('DCAOrderManager', () => {
   describe('Order Execution Logic', () => {
     let order: any;
 
-    beforeEach(() => {
-      order = manager.createOrder({
+    beforeEach(async () => {
+      order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -642,37 +642,37 @@ describe('DCAOrderManager', () => {
       });
     });
 
-    test('should execute when time has passed', () => {
+    test('should execute when time has passed', async () => {
       const futureTime = order.nextBuyAt + 1000;
       const shouldExecute = manager.shouldExecuteNextBuy(order, futureTime);
       expect(shouldExecute).toBe(true);
     });
 
-    test('should not execute before time', () => {
+    test('should not execute before time', async () => {
       const currentTime = order.nextBuyAt - 1000;
       const shouldExecute = manager.shouldExecuteNextBuy(order, currentTime);
       expect(shouldExecute).toBe(false);
     });
 
-    test('should not execute paused order', () => {
-      manager.pauseOrder(order.id);
+    test('should not execute paused order', async () => {
+      await manager.pauseOrder(order.id);
       const updatedOrder = manager.getOrder(order.id)!;
       const futureTime = order.nextBuyAt + 1000;
       const shouldExecute = manager.shouldExecuteNextBuy(updatedOrder, futureTime);
       expect(shouldExecute).toBe(false);
     });
 
-    test('should not execute completed order', () => {
-      manager.updateOrderStatus(order.id, 'completed');
+    test('should not execute completed order', async () => {
+      await manager.updateOrderStatus(order.id, 'completed');
       const updatedOrder = manager.getOrder(order.id)!;
       const futureTime = order.nextBuyAt + 1000;
       const shouldExecute = manager.shouldExecuteNextBuy(updatedOrder, futureTime);
       expect(shouldExecute).toBe(false);
     });
 
-    test('should not execute when all buys completed', () => {
+    test('should not execute when all buys completed', async () => {
       for (let i = 1; i <= 5; i++) {
-        manager.recordBuyExecution(order.id, {
+        await manager.recordBuyExecution(order.id, {
           buyNumber: i,
           timestamp: Date.now() + (i * 60 * 60000),
           solAmount: 0.2,
@@ -689,7 +689,7 @@ describe('DCAOrderManager', () => {
       expect(shouldExecute).toBe(false);
     });
 
-    test('should get orders ready for buy', () => {
+    test('should get orders ready for buy', async () => {
       const futureTime = order.nextBuyAt + 1000;
       jest.spyOn(Date, 'now').mockReturnValue(futureTime);
 
@@ -698,7 +698,7 @@ describe('DCAOrderManager', () => {
       expect(readyOrders[0].id).toBe(order.id);
     });
 
-    test('should not include orders not ready', () => {
+    test('should not include orders not ready', async () => {
       const currentTime = order.nextBuyAt - 1000;
       jest.spyOn(Date, 'now').mockReturnValue(currentTime);
 
@@ -710,8 +710,8 @@ describe('DCAOrderManager', () => {
   describe('Helper Methods', () => {
     let orderId: string;
 
-    beforeEach(() => {
-      const order = manager.createOrder({
+    beforeEach(async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -723,8 +723,8 @@ describe('DCAOrderManager', () => {
       orderId = order.id;
     });
 
-    test('should calculate total spent', () => {
-      manager.recordBuyExecution(orderId, {
+    test('should calculate total spent', async () => {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 1,
         timestamp: Date.now(),
         solAmount: 0.2,
@@ -734,7 +734,7 @@ describe('DCAOrderManager', () => {
         positionMint: mockTokenMint
       });
 
-      manager.recordBuyExecution(orderId, {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 2,
         timestamp: Date.now() + 60000,
         solAmount: 0.2,
@@ -748,8 +748,8 @@ describe('DCAOrderManager', () => {
       expect(spent).toBe(0.4);
     });
 
-    test('should calculate remaining budget', () => {
-      manager.recordBuyExecution(orderId, {
+    test('should calculate remaining budget', async () => {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 1,
         timestamp: Date.now(),
         solAmount: 0.2,
@@ -763,8 +763,8 @@ describe('DCAOrderManager', () => {
       expect(remaining).toBe(0.8);
     });
 
-    test('should calculate average entry price', () => {
-      manager.recordBuyExecution(orderId, {
+    test('should calculate average entry price', async () => {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 1,
         timestamp: Date.now(),
         solAmount: 0.2,
@@ -774,7 +774,7 @@ describe('DCAOrderManager', () => {
         positionMint: mockTokenMint
       });
 
-      manager.recordBuyExecution(orderId, {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 2,
         timestamp: Date.now() + 60000,
         solAmount: 0.2,
@@ -789,13 +789,13 @@ describe('DCAOrderManager', () => {
       expect(avgPrice).toBeCloseTo(0.02666, 4);
     });
 
-    test('should return 0 for average price with no buys', () => {
+    test('should return 0 for average price with no buys', async () => {
       const avgPrice = manager.getAverageEntryPrice(orderId);
       expect(avgPrice).toBe(0);
     });
 
-    test('should calculate progress percentage', () => {
-      manager.recordBuyExecution(orderId, {
+    test('should calculate progress percentage', async () => {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 1,
         timestamp: Date.now(),
         solAmount: 0.2,
@@ -805,7 +805,7 @@ describe('DCAOrderManager', () => {
         positionMint: mockTokenMint
       });
 
-      manager.recordBuyExecution(orderId, {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 2,
         timestamp: Date.now() + 60000,
         solAmount: 0.2,
@@ -819,7 +819,7 @@ describe('DCAOrderManager', () => {
       expect(progress).toBe(40); // 2 / 5 = 40%
     });
 
-    test('should calculate estimated completion time', () => {
+    test('should calculate estimated completion time', async () => {
       const order = manager.getOrder(orderId)!;
       const estimatedTime = manager.getEstimatedCompletionTime(orderId);
 
@@ -828,9 +828,9 @@ describe('DCAOrderManager', () => {
       expect(estimatedTime).toBe(expectedTime);
     });
 
-    test('should update estimated completion after buys', () => {
+    test('should update estimated completion after buys', async () => {
       const executionTime = Date.now();
-      manager.recordBuyExecution(orderId, {
+      await manager.recordBuyExecution(orderId, {
         buyNumber: 1,
         timestamp: executionTime,
         solAmount: 0.2,
@@ -846,9 +846,9 @@ describe('DCAOrderManager', () => {
       expect(estimatedTime).toBe(expectedTime);
     });
 
-    test('should return undefined for completed order', () => {
+    test('should return undefined for completed order', async () => {
       for (let i = 1; i <= 5; i++) {
-        manager.recordBuyExecution(orderId, {
+        await manager.recordBuyExecution(orderId, {
           buyNumber: i,
           timestamp: Date.now() + (i * 60000),
           solAmount: 0.2,
@@ -865,8 +865,8 @@ describe('DCAOrderManager', () => {
   });
 
   describe('Statistics', () => {
-    beforeEach(() => {
-      const order1 = manager.createOrder({
+    beforeEach(async () => {
+      const order1 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -876,7 +876,7 @@ describe('DCAOrderManager', () => {
         exitStrategy: 'aggressive' as ExitStrategy
       });
 
-      const order2 = manager.createOrder({
+      const order2 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'price-based',
@@ -887,10 +887,10 @@ describe('DCAOrderManager', () => {
         referencePrice: 0.05
       });
 
-      const order3 = manager.createOrder({
+      const order3 = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
-        strategyType: 'fixed-split',
+        strategyType: 'time-based',
         totalSolAmount: 0.5,
         numberOfBuys: 4,
         intervalMinutes: 30,
@@ -898,11 +898,11 @@ describe('DCAOrderManager', () => {
       });
 
       // Modify order statuses
-      manager.pauseOrder(order2.id);
+      await manager.pauseOrder(order2.id);
 
       // Complete order3
       for (let i = 1; i <= 4; i++) {
-        manager.recordBuyExecution(order3.id, {
+        await manager.recordBuyExecution(order3.id, {
           buyNumber: i,
           timestamp: Date.now() + (i * 30 * 60000),
           solAmount: 0.125,
@@ -914,7 +914,7 @@ describe('DCAOrderManager', () => {
       }
     });
 
-    test('should return correct statistics', () => {
+    test('should return correct statistics', async () => {
       const stats = manager.getStatistics();
 
       expect(stats.total).toBe(3);
@@ -926,8 +926,8 @@ describe('DCAOrderManager', () => {
       expect(stats.totalSolSpent).toBe(0.5); // Only order3 completed 4 * 0.125
     });
 
-    test('should track cancelled orders', () => {
-      const order = manager.createOrder({
+    test('should track cancelled orders', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -937,7 +937,7 @@ describe('DCAOrderManager', () => {
         exitStrategy: 'aggressive' as ExitStrategy
       });
 
-      manager.cancelOrder(order.id);
+      await manager.cancelOrder(order.id);
 
       const stats = manager.getStatistics();
       expect(stats.cancelled).toBe(1);
@@ -945,8 +945,8 @@ describe('DCAOrderManager', () => {
   });
 
   describe('Cleanup', () => {
-    test('should clean up old completed orders', () => {
-      const oldOrder = manager.createOrder({
+    test('should clean up old completed orders', async () => {
+      const oldOrder = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -957,7 +957,7 @@ describe('DCAOrderManager', () => {
       });
 
       // Complete the order
-      manager.recordBuyExecution(oldOrder.id, {
+      await manager.recordBuyExecution(oldOrder.id, {
         buyNumber: 1,
         timestamp: Date.now(),
         solAmount: 0.5,
@@ -967,7 +967,7 @@ describe('DCAOrderManager', () => {
         positionMint: mockTokenMint
       });
 
-      manager.recordBuyExecution(oldOrder.id, {
+      await manager.recordBuyExecution(oldOrder.id, {
         buyNumber: 2,
         timestamp: Date.now() + 60000,
         solAmount: 0.5,
@@ -981,12 +981,12 @@ describe('DCAOrderManager', () => {
       const mockNow = Date.now() + (31 * 24 * 60 * 60 * 1000);
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
 
-      const removed = manager.cleanup(30);
+      const removed = await manager.cleanup(30);
       expect(removed).toBe(1);
     });
 
-    test('should clean up old cancelled orders', () => {
-      const order = manager.createOrder({
+    test('should clean up old cancelled orders', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -996,18 +996,18 @@ describe('DCAOrderManager', () => {
         exitStrategy: 'aggressive' as ExitStrategy
       });
 
-      manager.cancelOrder(order.id);
+      await manager.cancelOrder(order.id);
 
       // Mock time 31 days in future
       const mockNow = Date.now() + (31 * 24 * 60 * 60 * 1000);
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
 
-      const removed = manager.cleanup(30);
+      const removed = await manager.cleanup(30);
       expect(removed).toBe(1);
     });
 
-    test('should not clean up recent orders', () => {
-      manager.createOrder({
+    test('should not clean up recent orders', async () => {
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -1017,12 +1017,12 @@ describe('DCAOrderManager', () => {
         exitStrategy: 'aggressive' as ExitStrategy
       });
 
-      const removed = manager.cleanup(30);
+      const removed = await manager.cleanup(30);
       expect(removed).toBe(0);
     });
 
-    test('should not clean up active orders', () => {
-      manager.createOrder({
+    test('should not clean up active orders', async () => {
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -1035,12 +1035,12 @@ describe('DCAOrderManager', () => {
       const mockNow = Date.now() + (31 * 24 * 60 * 60 * 1000);
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
 
-      const removed = manager.cleanup(30);
+      const removed = await manager.cleanup(30);
       expect(removed).toBe(0);
     });
 
-    test('should not clean up paused orders', () => {
-      const order = manager.createOrder({
+    test('should not clean up paused orders', async () => {
+      const order = await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
@@ -1050,18 +1050,18 @@ describe('DCAOrderManager', () => {
         exitStrategy: 'aggressive' as ExitStrategy
       });
 
-      manager.pauseOrder(order.id);
+      await manager.pauseOrder(order.id);
 
       const mockNow = Date.now() + (31 * 24 * 60 * 60 * 1000);
       jest.spyOn(Date, 'now').mockReturnValue(mockNow);
 
-      const removed = manager.cleanup(30);
+      const removed = await manager.cleanup(30);
       expect(removed).toBe(0);
     });
   });
 
   describe('Data Persistence', () => {
-    test('should load orders from disk on initialization', () => {
+    test('should load orders from disk on initialization', async () => {
       const mockOrders = [
         {
           id: '123',
@@ -1092,21 +1092,21 @@ describe('DCAOrderManager', () => {
       expect(orders[0].id).toBe('123');
     });
 
-    test('should handle missing data directory gracefully', () => {
+    test('should handle missing data directory gracefully', async () => {
       mockFs.existsSync.mockReturnValue(false);
 
       expect(() => new DCAOrderManager()).not.toThrow();
     });
 
-    test('should handle corrupted data file gracefully', () => {
+    test('should handle corrupted data file gracefully', async () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue('invalid json');
 
       expect(() => new DCAOrderManager()).not.toThrow();
     });
 
-    test('should save to disk after operations', () => {
-      manager.createOrder({
+    test('should save to disk after operations', async () => {
+      await manager.createOrder({
         walletPublicKey: mockWalletPublicKey,
         tokenMint: mockTokenMint,
         strategyType: 'time-based',
