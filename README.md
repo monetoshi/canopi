@@ -13,7 +13,7 @@ An intelligent trading bot for Solana with 16 automated exit strategies, ZK-Priv
 [![Solana](https://img.shields.io/badge/Solana-Mainnet-9945FF.svg)](https://solana.com/)
 [![Desktop](https://img.shields.io/badge/Platform-macOS-lightgrey.svg)]()
 
-[Features](#features) • [Quick Start](#quick-start) • [Privacy](#-privacy--stealth-mode) • [Documentation](#documentation)
+[Features](#features) • [Quick Start](#quick-start) • [Privacy](#privacy--stealth-mode) • [Documentation](#documentation)
 
 </div>
 
@@ -23,35 +23,35 @@ An intelligent trading bot for Solana with 16 automated exit strategies, ZK-Priv
 
 Most Solana trading bots focus on **sniping new token launches**. Canopi is different:
 
-✅ **16 Exit Strategies** - Pro-grade risk management from scalping to HODLing.
-✅ **Stealth Mode** - ZK-Privacy via ShadowWire and Ephemeral Burner Wallets.
-✅ **Native macOS App** - Modern, draggable dark-mode interface.
-✅ **Secure by Design** - Admin API protection and WebSocket signature verification.
-✅ **Real-Time Data** - Live P&L and trade tracking via WebSockets and DexScreener.
+**16 Exit Strategies** - Pro-grade risk management from scalping to HODLing.
+**Stealth Mode** - ZK-Privacy via ShadowWire and Ephemeral Burner Wallets.
+**Native macOS App** - Modern, draggable dark-mode interface.
+**Secure by Design** - Admin API protection and WebSocket signature verification.
+**Real-Time Data** - Live P&L and trade tracking via WebSockets and DexScreener.
 
 ---
 
 ## Features
 
-### 🎯 16 Automated Exit Strategies
+### 16 Automated Exit Strategies
 Automate your sells with precision. Canopi monitors your positions every 5 seconds and executes based on your chosen risk profile.
 - **Fast Trading**: Scalping, Aggressive, Moderate, Slow (1-50 min).
 - **HODL & Swing**: Percentage-based targets for long-term gains.
 - **Advanced**: Trailing Stops, Grid Trading, Breakout detection, and Take Profit only.
 
-### 🕵️ Privacy & Stealth Mode
+### Privacy & Stealth Mode
 Powered by **ShadowWire ZK-Proofs**, Canopi allows you to trade without leaving a public trail.
 - **Privacy Shield**: Deposit funds into a shielded pool to hide your balance.
 - **Stealth Limit Orders**: Automatically fund a fresh ephemeral wallet *only* when your price target is hit.
 - **Ephemeral Wallets**: Every private trade uses a one-time burner wallet to sever the link to your main account.
 
-### 🔔 Telegram Bot Integration
+### Telegram Bot Integration
 Stay informed on the go with our interactive Telegram companion.
 - **Real-Time Alerts**: Get pings for Buys, Sells, DCA triggers, and Errors.
 - **Secure Linking**: Link your wallet using a secure 6-digit code system.
 - **Remote Settings**: Toggle notification types directly from the chat menu.
 
-### 🖥️ Native Desktop Experience
+### Native Desktop Experience
 Canopi is built as a native macOS application for a premium, local-first experience.
 - **Modern UI**: Hidden-inset title bar and Slate-950 dark theme.
 - **Native Draggable**: Move the window naturally from the app header.
@@ -123,7 +123,7 @@ Go to the **Privacy Shield** card. Enter an amount and click **Shield Funds**. T
 
 ## Roadmap
 
-### ✅ Completed
+### Completed
 - [x] 16 automated exit strategies.
 - [x] ZK-Privacy integration (ShadowWire).
 - [x] Stealth Limit Orders and Private DCA.
@@ -132,7 +132,7 @@ Go to the **Privacy Shield** card. Enter an amount and click **Shield Funds**. T
 - [x] Real-time transaction history and tax reporting.
 - [x] Embedded PGLite database support.
 
-### 🚀 Near-Term
+### Near-Term
 - [ ] Live OHLCV charts via DexScreener API (replacing mock data).
 - [ ] "Trending Sniper" dashboard for hot Solana pairs.
 - [ ] Advanced performance analytics (Strategy Win Rate, P&L Heatmaps).
@@ -148,7 +148,7 @@ Copyright (c) 2025 Canopi (Monetoshi Project)
 
 <div align="center">
 
-**Made with ❤️ for the Solana community**
+**Built for the Solana community**
 
 [Report Bug](https://github.com/jamesfredericks/solana-trading-bot/issues) • [Request Feature](https://github.com/jamesfredericks/solana-trading-bot/discussions)
 
