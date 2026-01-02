@@ -12,6 +12,7 @@ yarn-error.log*
 
 # Build outputs
 dist/
+dist-electron/
 build/
 .next/
 out/
@@ -59,7 +60,9 @@ Screenshot*.png
 backend/*.png
 avi meme.png
 
-# Agent Directory
-.gemini/CLAUDE.md, Instructions.md
-.gemini/Instructions.md
+# Agent Directory & Scripts
+.gemini/
+Instructions.md
+instructions.md
+CLAUDE.md
 smart-commit.sh
