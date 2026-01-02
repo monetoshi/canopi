@@ -1,52 +1,95 @@
 const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, fork } = require('child_process');
 const fs = require('fs');
 
 // Global reference to prevent garbage collection
 let mainWindow;
 let backendProcess;
 
-const isDev = process.env.NODE_ENV !== 'production';
+// Robust check for development vs production
+const isDev = !app.isPackaged;
 const BACKEND_PORT = 3001;
 const FRONTEND_PORT = 3000;
 
 // Determine where to store user data (database, wallet keys)
 // On macOS: ~/Library/Application Support/CanopiTradingBot
 const userDataPath = app.getPath('userData');
-console.log('[Electron] User Data Path:', userDataPath);
+const logFile = path.join(userDataPath, 'startup.log');
+
+// Simple file logger
+function log(msg) {
+  try {
+    fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+    console.log(msg);
+  } catch (e) { console.error(e); }
+}
+
+log(`App starting. User Data: ${userDataPath}`);
+log(`Is Dev: ${isDev}`);
 
 function startBackend() {
-  console.log('[Electron] Starting Backend...');
+  log('[Electron] Starting Backend...');
   
-  // In Dev: Run ts-node directly
-  // In Prod: Run the compiled node script
-  const backendCmd = isDev ? 'npx' : 'node';
-  const backendArgs = isDev 
-    ? ['ts-node', path.join(__dirname, '../backend/src/index.ts')] 
-    : [path.join(__dirname, '../backend/dist/index.js')];
+  const backendEntry = isDev 
+    ? path.join(__dirname, '../backend/src/index.ts')
+    : path.join(__dirname, '../backend/dist/index.js');
+
+  log(`Backend Entry: ${backendEntry}`);
+
+  if (!isDev && !fs.existsSync(backendEntry)) {
+    log(`CRITICAL: Backend entry file not found at ${backendEntry}`);
+    return;
+  }
 
   const env = { 
     ...process.env, 
     PORT: BACKEND_PORT,
-    DATA_DIR: userDataPath, // Tell backend to save DB here
+    DATA_DIR: userDataPath,
     NODE_ENV: isDev ? 'development' : 'production'
   };
 
-  backendProcess = spawn(backendCmd, backendArgs, {
-    cwd: path.join(__dirname, '../backend'),
-    env,
-    shell: true,
-    stdio: 'pipe'
-  });
+  try {
+    if (isDev) {
+      log('Spawning backend via npx ts-node (Dev mode)');
+      backendProcess = spawn('npx', ['ts-node', backendEntry], {
+        cwd: path.join(__dirname, '../backend'),
+        env,
+        shell: true,
+        stdio: 'pipe'
+      });
+    } else {
+      log('Forking backend process (Production mode)');
+      // fork is specialized for spawning node processes and handles the execPath automatically
+      backendProcess = fork(backendEntry, [], {
+        cwd: path.dirname(backendEntry),
+        env,
+        stdio: 'pipe'
+      });
+    }
 
-  backendProcess.stdout.on('data', (data) => {
-    console.log(`[Backend] ${data}`);
-  });
+    if (backendProcess.stdout) {
+      backendProcess.stdout.on('data', (data) => {
+        log(`[Backend] ${data}`);
+      });
+    }
 
-  backendProcess.stderr.on('data', (data) => {
-    console.error(`[Backend Error] ${data}`);
-  });
+    if (backendProcess.stderr) {
+      backendProcess.stderr.on('data', (data) => {
+        log(`[Backend Error] ${data}`);
+      });
+    }
+    
+    backendProcess.on('error', (err) => {
+      log(`[Electron] Failed to start backend: ${err.message}`);
+    });
+    
+    backendProcess.on('close', (code) => {
+      log(`[Backend] Process exited with code ${code}`);
+    });
+  } catch (e) {
+    log(`[Electron] Exception starting backend: ${e.message}`);
+  }
 }
 
 function createWindow() {
@@ -77,6 +120,7 @@ function createWindow() {
   // Only show the window when it's ready to prevent visual glitches
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    // Only open DevTools in development mode
     if (isDev) {
       mainWindow.webContents.openDevTools();
     }
@@ -84,8 +128,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // In development, the backend is started separately via concurrently 
-  // so you can see logs in the terminal.
+  // Only start the backend manually in production
+  // In dev, "npm run desktop" starts it separately
   if (!isDev) {
     startBackend();
   }

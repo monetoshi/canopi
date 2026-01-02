@@ -20,7 +20,7 @@
     "wait-on": "^9.0.3"
   },
   "build": {
-    "appId": "com.monetoshi.canopi",
+    "appId": "com.canopi.bot",
     "productName": "Canopi",
     "directories": {
       "output": "dist-electron"
@@ -28,11 +28,14 @@
     "files": [
       "electron/**/*",
       "backend/dist/**/*",
+      "backend/package.json",
+      "backend/node_modules/**/*",
       "frontend/out/**/*"
     ],
     "mac": {
       "category": "public.app-category.finance",
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "build/icon.png"
     }
   }
 }

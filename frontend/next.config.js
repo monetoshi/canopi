@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
+  // assetPrefix: './', // Disabled to fix next/font error in dev mode
   images: {
     unoptimized: true,
   },
