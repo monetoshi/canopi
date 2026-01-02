@@ -4,7 +4,7 @@
 
 ![Canopi Logo](frontend/public/canopi-logo.svg)
 
-**Algorithmic trading, elevated.**
+**Privacy-first algorithmic trading.**
 
 An intelligent trading bot for Solana with 16 automated exit strategies, ZK-Privacy, and a native macOS experience.
 
