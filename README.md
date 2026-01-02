@@ -17,6 +17,11 @@ An intelligent trading bot for Solana with 16 automated exit strategies, ZK-Priv
 
 </div>
 
+> **⚠️ BETA STATUS**
+>
+> Canopi is currently in **public beta**. While the privacy and trading features have been tested, this software deals with real financial assets and carries inherent risks.
+> **Use cautiously and at your own risk.** We welcome your feedback and bug reports to help improve the platform.
+
 ---
 
 ## Why Canopi?
