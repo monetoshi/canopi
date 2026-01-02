@@ -28,6 +28,22 @@ api.interceptors.request.use((config) => {
 });
 
 /**
+ * Unlock wallet
+ */
+export async function unlockWallet(password: string): Promise<boolean> {
+  try {
+    const response = await api.post<ApiResponse>('/api/wallet/unlock', { password });
+    return response.data.success;
+  } catch (error) {
+    console.error('Error unlocking wallet:', error);
+    if (error instanceof AxiosError && error.response) {
+      throw new Error(error.response.data.error || 'Failed to unlock wallet');
+    }
+    throw error;
+  }
+}
+
+/**
  * Get bot wallet status
  */
 export async function getBotStatus(): Promise<BotStatus> {

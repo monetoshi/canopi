@@ -78,9 +78,10 @@ async function startServer() {
   const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
   if (fs.existsSync(walletPath) && !process.env.WALLET_PASSWORD && !process.env.WALLET_PRIVATE_KEY) {
     console.log('\n🔒 Encrypted wallet found, but no password provided.');
-    const password = await askPassword('🔑 Please enter your wallet password: ');
-    process.env.WALLET_PASSWORD = password;
-    console.log('\n✅ Password received. Starting server...\n');
+    console.log('⚠️  Server starting in LOCKED mode. Please unlock via API or UI.');
+    // const password = await askPassword('🔑 Please enter your wallet password: ');
+    // process.env.WALLET_PASSWORD = password;
+    // console.log('\n✅ Password received. Starting server...\n');
   }
 
   // Add chart API routes

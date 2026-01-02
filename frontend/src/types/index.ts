@@ -188,6 +188,7 @@ export interface PendingSell {
 
 export interface BotStatus {
   configured: boolean;
+  isLocked?: boolean;
   publicKey: string | null;
   balance: number;
 }

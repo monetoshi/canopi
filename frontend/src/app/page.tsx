@@ -244,7 +244,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img
-                src="/canopi-icon.svg"
+                src="./canopi-icon.svg"
                 alt="Canopi"
                 className="w-10 h-10"
               />
@@ -261,7 +261,7 @@ export default function Home() {
         {(!connected && !showIntegrated) ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
             <img
-              src="/canopi-logo.svg"
+              src="./canopi-logo.svg"
               alt="Canopi Logo"
               className="w-32 h-32 mb-6 opacity-90"
             />

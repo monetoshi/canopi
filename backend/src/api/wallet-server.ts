@@ -5,6 +5,8 @@
 
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
 import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
 import { positionManager } from '../core/position-manager';
 import { limitOrderManager } from '../core/limit-order-manager';
@@ -15,6 +17,7 @@ import { jupiterService } from '../services/jupiter.service';
 import { priceService } from '../services/price.service';
 import { taxService } from '../services/tax.service';
 import { getConnection, getSOLBalance, isValidPublicKey, getWalletKeypair } from '../utils/blockchain.util';
+import { loadEncryptedWallet, decrypt } from '../utils/security.util';
 import { logger } from '../utils/logger.util';
 import { ApiResponse, ExitStrategy, Position } from '../types';
 import { getAllStrategies, isValidStrategy, getStrategy } from '../core/strategies';
@@ -67,6 +70,45 @@ app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
+});
+
+/**
+ * Unlock Wallet
+ */
+app.post('/api/wallet/unlock', async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Password required' });
+    }
+
+    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    if (!fs.existsSync(walletPath)) {
+      return res.status(404).json({ success: false, error: 'No encrypted wallet found' });
+    }
+
+    const encryptedData = loadEncryptedWallet(walletPath);
+    if (!encryptedData) {
+      return res.status(500).json({ success: false, error: 'Failed to load wallet data' });
+    }
+
+    try {
+      // Attempt to decrypt to verify password
+      const decryptedKey = decrypt(encryptedData, password);
+      if (!decryptedKey) throw new Error('Decryption failed');
+      
+      // If successful, set env var
+      process.env.WALLET_PASSWORD = password;
+      logger.info('✅ Wallet unlocked successfully via API');
+
+      res.json({ success: true, message: 'Wallet unlocked' });
+    } catch (error) {
+      logger.warn('❌ Failed unlock attempt: Invalid password');
+      return res.status(401).json({ success: false, error: 'Invalid password' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 /**
@@ -1858,6 +1900,10 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
     const wallet = getWalletKeypair();
     let balance = 0;
     
+    // Check if wallet exists but is locked
+    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    const isLocked = fs.existsSync(walletPath) && !process.env.WALLET_PASSWORD && !process.env.WALLET_PRIVATE_KEY;
+    
     if (wallet) {
       const solBalance = await getSOLBalance(connection, wallet.publicKey.toString());
       balance = solBalance;
@@ -1867,6 +1913,7 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
       success: true,
       data: {
         configured: !!wallet,
+        isLocked,
         publicKey: wallet ? wallet.publicKey.toString() : null,
         balance
       },
