@@ -25,7 +25,6 @@ Canopi is not just another sniper bot. It is a **complete portfolio management s
 
 **16 Exit Strategies** - From 1-minute scalping to 30-day HODL positions.
 **Zero-Knowledge Privacy** - Trade without linking your main wallet to your degen plays.
-**Tax Compliance** - Built-in 1099-B generation and wash sale tracking.
 **Native Desktop App** - A secure, local-first application that keeps your keys on your machine.
 
 ---
@@ -47,12 +46,6 @@ Powered by **ShadowWire ZK-Proofs**, Canopi introduces "Stealth Mode" to Solana 
 - **Ephemeral Wallets**: The bot automatically spins up one-time "burner" wallets for trades.
 - **Stealth Limit Orders**: Funds are moved from the shielded pool to a burner wallet *only* when your price target is hit, keeping your intentions hidden until the last second.
 - **Internal Consolidation**: Profits are swept back into the shielded pool via internal transfers.
-
-### Tax & Compliance
-Trade freely knowing your paperwork is handled.
-- **1099-B Export**: Generate CSV reports compatible with major tax software.
-- **Cost Basis Methods**: Support for FIFO, LIFO, and HIFO accounting.
-- **Wash Sale Tracking**: Optional setting to identify and flag wash sales automatically.
 
 ### User Experience
 - **Native macOS App**: A polished Electron app with a hidden-inset title bar and dark mode.
@@ -101,7 +94,7 @@ npm run desktop
 ## Usage Guide
 
 ### 1. Authenticate & Unlock
-Upon launching, enter your `ADMIN_API_KEY` to access the dashboard. If you have an encrypted wallet, you will be prompted to enter your password to unlock the signing capability.
+Upon launching, enter your `ADMIN_API_KEY` in the **Admin Access** section. This unlocks your data and fund movements. If you have an encrypted wallet, you will be prompted to enter your password to unlock the signing capability.
 
 ### 2. Fund the Shield
 Navigate to the **Privacy Shield** card. Enter an amount (e.g., 1 SOL) and click **Shield Funds**. This moves your SOL into the ShadowWire ZK-pool.
@@ -115,9 +108,6 @@ Navigate to the **Privacy Shield** card. Enter an amount (e.g., 1 SOL) and click
    - Execute the buy.
    - Manage the position using the burner wallet.
 
-### 4. Generate Tax Reports
-At the end of the year, go to **Settings > Tax Reporting**. Select the tax year and your preferred cost basis method (e.g., FIFO), then click **Export 1099-B** to download your CSV.
-
 ---
 
 ## Roadmap
@@ -128,7 +118,6 @@ At the end of the year, go to **Settings > Tax Reporting**. Select the tax year 
 - [x] Stealth Limit Orders and Private DCA.
 - [x] Native macOS App (Electron).
 - [x] Secure Telegram Bot integration.
-- [x] Tax reporting (1099-B, Wash Sales).
 - [x] Embedded PGLite database support.
 
 ### Near-Term
