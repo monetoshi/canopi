@@ -13,7 +13,7 @@ An intelligent trading bot for Solana with 16 automated exit strategies, ZK-Priv
 [![Solana](https://img.shields.io/badge/Solana-Mainnet-9945FF.svg)](https://solana.com/)
 [![Desktop](https://img.shields.io/badge/Platform-macOS-lightgrey.svg)]()
 
-[Features](#features) • [Quick Start](#quick-start) • [Privacy](#privacy--stealth-mode) • [Documentation](#documentation)
+[Features](#features) • [Privacy](#privacy-architecture) • [Quick Start](#quick-start) • [Documentation](#documentation)
 
 </div>
 
@@ -21,41 +21,49 @@ An intelligent trading bot for Solana with 16 automated exit strategies, ZK-Priv
 
 ## Why Canopi?
 
-Most Solana trading bots focus on **sniping new token launches**. Canopi is different:
+Canopi is not just another sniper bot. It is a **complete portfolio management system** designed for privacy-conscious traders who value risk management over gambling.
 
-**16 Exit Strategies** - Pro-grade risk management from scalping to HODLing.
-**Stealth Mode** - ZK-Privacy via ShadowWire and Ephemeral Burner Wallets.
-**Native macOS App** - Modern, draggable dark-mode interface.
-**Secure by Design** - Admin API protection and WebSocket signature verification.
-**Real-Time Data** - Live P&L and trade tracking via WebSockets and DexScreener.
+**16 Exit Strategies** - From 1-minute scalping to 30-day HODL positions.
+**Zero-Knowledge Privacy** - Trade without linking your main wallet to your degen plays.
+**Tax Compliance** - Built-in 1099-B generation and wash sale tracking.
+**Native Desktop App** - A secure, local-first application that keeps your keys on your machine.
 
 ---
 
 ## Features
 
-### 16 Automated Exit Strategies
-Automate your sells with precision. Canopi monitors your positions every 5 seconds and executes based on your chosen risk profile.
-- **Fast Trading**: Scalping, Aggressive, Moderate, Slow (1-50 min).
-- **HODL & Swing**: Percentage-based targets for long-term gains.
-- **Advanced**: Trailing Stops, Grid Trading, Breakout detection, and Take Profit only.
+### Automated Trading Engine
+The heart of Canopi is its strategy engine, which monitors your positions every 5 seconds.
+- **Entry Modes**: Instant Buy, Limit Orders, and Dollar Cost Averaging (DCA).
+- **Exit Strategies**:
+  - **Fast**: Scalping (1-3m), Aggressive (8m), Moderate (20m).
+  - **Swing**: Multi-day holds with percentage-based targets.
+  - **Advanced**: Trailing Stop, Breakout Detection, and Grid Trading.
+- **Risk Management**: Automatic stop-losses and take-profit levels for every trade.
 
-### Privacy & Stealth Mode
-Powered by **ShadowWire ZK-Proofs**, Canopi allows you to trade without leaving a public trail.
-- **Privacy Shield**: Deposit funds into a shielded pool to hide your balance.
-- **Stealth Limit Orders**: Automatically fund a fresh ephemeral wallet *only* when your price target is hit.
-- **Ephemeral Wallets**: Every private trade uses a one-time burner wallet to sever the link to your main account.
+### Privacy Architecture
+Powered by **ShadowWire ZK-Proofs**, Canopi introduces "Stealth Mode" to Solana trading.
+- **Privacy Shield**: Deposit SOL into a shielded pool to break on-chain links.
+- **Ephemeral Wallets**: The bot automatically spins up one-time "burner" wallets for trades.
+- **Stealth Limit Orders**: Funds are moved from the shielded pool to a burner wallet *only* when your price target is hit, keeping your intentions hidden until the last second.
+- **Internal Consolidation**: Profits are swept back into the shielded pool via internal transfers.
 
-### Telegram Bot Integration
-Stay informed on the go with our interactive Telegram companion.
-- **Real-Time Alerts**: Get pings for Buys, Sells, DCA triggers, and Errors.
-- **Secure Linking**: Link your wallet using a secure 6-digit code system.
-- **Remote Settings**: Toggle notification types directly from the chat menu.
+### Tax & Compliance
+Trade freely knowing your paperwork is handled.
+- **1099-B Export**: Generate CSV reports compatible with major tax software.
+- **Cost Basis Methods**: Support for FIFO, LIFO, and HIFO accounting.
+- **Wash Sale Tracking**: Optional setting to identify and flag wash sales automatically.
 
-### Native Desktop Experience
-Canopi is built as a native macOS application for a premium, local-first experience.
-- **Modern UI**: Hidden-inset title bar and Slate-950 dark theme.
-- **Native Draggable**: Move the window naturally from the app header.
-- **Local Database**: Uses **PGLite** for an embedded, high-performance Postgres experience.
+### User Experience
+- **Native macOS App**: A polished Electron app with a hidden-inset title bar and dark mode.
+- **Telegram Companion**: Link your bot securely to get real-time notifications on buys, sells, and errors. Control your bot remotely with simple commands.
+- **Local Database**: All data is stored in an embedded **PGLite** (PostgreSQL) database within the app, ensuring high performance without external dependencies.
+
+### Security
+- **Encrypted Storage**: Your wallet is encrypted with AES-256 and stored locally (`wallet.enc.json`).
+- **Server-Side Signing**: Transactions are constructed and signed within the secure backend process.
+- **API Protection**: All sensitive endpoints require an `ADMIN_API_KEY`.
+- **Log Masking**: RPC parameters and keys are automatically redacted from logs.
 
 ---
 
@@ -63,14 +71,15 @@ Canopi is built as a native macOS application for a premium, local-first experie
 
 ### Prerequisites
 - **Node.js 20+**
-- **Solana wallet** (Phantom recommended)
+- **Solana wallet** (Phantom recommended for initial setup)
 - **Telegram Bot Token** (Get from @BotFather)
 
 ### Installation
+
 1. **Clone & Install**
 ```bash
-git clone https://github.com/jamesfredericks/solana-trading-bot.git
-cd solana-trading-bot
+git clone https://github.com/monetoshi/canopi.git
+cd canopi
 npm install # Install root, backend, and frontend deps
 ```
 
@@ -91,33 +100,23 @@ npm run desktop
 
 ## Usage Guide
 
-### 1. Authenticate
-Open the app menu (Hamburger icon) and enter your `ADMIN_API_KEY` in the **Admin Access** section. This unlocks your data and fund movements.
+### 1. Authenticate & Unlock
+Upon launching, enter your `ADMIN_API_KEY` to access the dashboard. If you have an encrypted wallet, you will be prompted to enter your password to unlock the signing capability.
 
 ### 2. Fund the Shield
-Go to the **Privacy Shield** card. Enter an amount and click **Shield Funds**. This moves SOL into the ZK-pool for private trading.
+Navigate to the **Privacy Shield** card. Enter an amount (e.g., 1 SOL) and click **Shield Funds**. This moves your SOL into the ShadowWire ZK-pool.
 
 ### 3. Set a Stealth Order
-- Use **Token Search** to find a pair.
-- Select **Limit Order** as the Entry Strategy.
-- Toggle **Stealth Limit Order** to **ON**.
-- The bot will now monitor the price and execute via a private burner wallet when hit.
+1. Go to **Token Search** and find a pair.
+2. Select **Limit Order** as your entry strategy.
+3. Toggle **Stealth Limit Order** to **ON**.
+4. The bot will monitor the price. When the target is hit, it will:
+   - Withdraw funds from the shield to a fresh burner wallet.
+   - Execute the buy.
+   - Manage the position using the burner wallet.
 
----
-
-## Architecture
-
-### Tech Stack
-- **Frontend**: Next.js 14, TailwindCSS, Lucide React.
-- **Backend**: Node.js, Express, Drizzle ORM.
-- **Database**: PGLite (Embedded Postgres) or standard PostgreSQL.
-- **Desktop**: Electron.
-- **Integrations**: Jupiter V6 (DEX), DexScreener (Prices), ShadowWire (Privacy).
-
-### Security Model
-- **Admin API Key**: Required for all sensitive REST endpoints.
-- **WebSocket Auth**: Requires a cryptographic signature from your wallet to subscribe to position updates.
-- **Log Masking**: Sensitive RPC query parameters are automatically redacted from system logs.
+### 4. Generate Tax Reports
+At the end of the year, go to **Settings > Tax Reporting**. Select the tax year and your preferred cost basis method (e.g., FIFO), then click **Export 1099-B** to download your CSV.
 
 ---
 
@@ -129,11 +128,11 @@ Go to the **Privacy Shield** card. Enter an amount and click **Shield Funds**. T
 - [x] Stealth Limit Orders and Private DCA.
 - [x] Native macOS App (Electron).
 - [x] Secure Telegram Bot integration.
-- [x] Real-time transaction history and tax reporting.
+- [x] Tax reporting (1099-B, Wash Sales).
 - [x] Embedded PGLite database support.
 
 ### Near-Term
-- [ ] Live OHLCV charts via DexScreener API (replacing mock data).
+- [ ] Live OHLCV charts via DexScreener API.
 - [ ] "Trending Sniper" dashboard for hot Solana pairs.
 - [ ] Advanced performance analytics (Strategy Win Rate, P&L Heatmaps).
 - [ ] Mobile-responsive web deployment profile.
@@ -150,6 +149,6 @@ Copyright (c) 2025 Canopi (Monetoshi Project)
 
 **Built for the Solana community**
 
-[Report Bug](https://github.com/jamesfredericks/solana-trading-bot/issues) • [Request Feature](https://github.com/jamesfredericks/solana-trading-bot/discussions)
+[Report Bug](https://github.com/monetoshi/canopi/issues) • [Request Feature](https://github.com/monetoshi/canopi/discussions)
 
 </div>
