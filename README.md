@@ -136,7 +136,7 @@ Copyright (c) 2025 Canopi (Monetoshi Project)
 
 <div align="center">
 
-**Built for the Solana community**
+**Built with love for the Solana Community**
 
 [Report Bug](https://github.com/monetoshi/canopi/issues) • [Request Feature](https://github.com/monetoshi/canopi/discussions)
 
