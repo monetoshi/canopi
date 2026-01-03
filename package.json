@@ -32,6 +32,9 @@
       "backend/node_modules/**/*",
       "frontend/out/**/*"
     ],
+    "asarUnpack": [
+      "backend/**/*"
+    ],
     "mac": {
       "category": "public.app-category.finance",
       "target": "dmg",
