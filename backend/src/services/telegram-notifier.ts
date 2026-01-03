@@ -10,6 +10,7 @@ import { Position } from '../types';
 import { DCAOrder } from '../types/dca.types';
 import { eq } from 'drizzle-orm';
 import { logger } from '../utils/logger.util';
+import { configUtil } from '../utils/config.util';
 
 export class TelegramNotifier {
   private bot: TelegramBot | null = null;
@@ -49,7 +50,13 @@ export class TelegramNotifier {
    * Initialize the Telegram Bot
    */
   private async initialize() {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    let token = process.env.TELEGRAM_BOT_TOKEN;
+    
+    if (!token) {
+      const config = configUtil.get();
+      token = config.telegramBotToken;
+    }
+
     if (!token) {
       logger.warn('[Telegram] TELEGRAM_BOT_TOKEN not found - notifications disabled');
       return;
@@ -69,6 +76,17 @@ export class TelegramNotifier {
     } catch (error: any) {
       logger.error(`[Telegram] Failed to initialize bot: ${error.message}`);
     }
+  }
+
+  /**
+   * Re-initialize the bot (e.g. after setting token)
+   */
+  public async reload() {
+    if (this.bot) {
+      await this.bot.stopPolling();
+      this.bot = null;
+    }
+    await this.initialize();
   }
 
   /**

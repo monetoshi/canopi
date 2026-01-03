@@ -5,8 +5,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { getDataDir } from '../utils/paths.util';
 
-const WATCHLIST_FILE = path.join(__dirname, '../../data/watchlist.json');
+const WATCHLIST_FILE = path.join(getDataDir(), 'watchlist.json');
 
 export interface WatchlistItem {
   mint: string;

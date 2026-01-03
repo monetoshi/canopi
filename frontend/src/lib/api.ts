@@ -249,6 +249,19 @@ export async function createLimitOrder(params: {
 }
 
 /**
+ * Save Telegram Bot Token
+ */
+export async function saveTelegramToken(token: string): Promise<boolean> {
+  try {
+    const response = await api.post<ApiResponse>('/api/settings/telegram', { token });
+    return response.data.success;
+  } catch (error) {
+    console.error('Error saving Telegram token:', error);
+    return false;
+  }
+}
+
+/**
  * Generate Telegram Link Code
  */
 export async function generateTelegramLinkCode(walletPublicKey: string): Promise<{ code: string; botUsername: string }> {

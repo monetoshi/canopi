@@ -271,7 +271,7 @@ export default function Home() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <WalletMultiButton>Select External Wallet</WalletMultiButton>
+              {!isElectron && <WalletMultiButton>Select External Wallet</WalletMultiButton>}
               
               <button
                 onClick={() => setShowIntegrated(true)}
@@ -282,6 +282,12 @@ export default function Home() {
                 <ChevronRight className="w-4 h-4 opacity-50" />
               </button>
             </div>
+            
+            {isElectron && (
+              <p className="text-xs text-gray-500 mt-4">
+                Desktop App uses the integrated bot wallet for security and automation.
+              </p>
+            )}
             
             {!botStatus?.configured && showIntegrated && (
                <p className="mt-4 text-xs text-yellow-500/70">

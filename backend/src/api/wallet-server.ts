@@ -19,6 +19,7 @@ import { taxService } from '../services/tax.service';
 import { getConnection, getSOLBalance, isValidPublicKey, getWalletKeypair } from '../utils/blockchain.util';
 import { loadEncryptedWallet, decrypt } from '../utils/security.util';
 import { getWalletPath } from '../utils/paths.util';
+import { configUtil } from '../utils/config.util';
 import { logger } from '../utils/logger.util';
 import { ApiResponse, ExitStrategy, Position } from '../types';
 import { getAllStrategies, isValidStrategy, getStrategy } from '../core/strategies';
@@ -2123,6 +2124,23 @@ app.get('/api/trades/:walletPublicKey', authenticateAdmin, async (req: Request, 
   } catch (error: any) {
     logger.error('Error getting trades:', error);
     res.status(500).json({ success: false, error: 'Failed to get transaction history' });
+  }
+});
+
+/**
+ * Save Telegram Bot Token
+ */
+app.post('/api/settings/telegram', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ success: false, error: 'Token required' });
+    
+    configUtil.set('telegramBotToken', token);
+    await telegramNotifier.reload();
+    
+    res.json({ success: true, message: 'Telegram token saved and bot reloaded' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

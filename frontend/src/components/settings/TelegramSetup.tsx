@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Send, CheckCircle2, XCircle, ExternalLink, MessageSquare, Loader2, Key, Copy, Check, Lock, Unlock } from 'lucide-react';
-import { getTelegramStatus, generateTelegramLinkCode } from '@/lib/api';
+import { Send, CheckCircle2, XCircle, ExternalLink, MessageSquare, Loader2, Key, Copy, Check, Lock, Unlock, Bot } from 'lucide-react';
+import { getTelegramStatus, generateTelegramLinkCode, saveTelegramToken } from '@/lib/api';
 
 interface TelegramSetupProps {
   activeWalletKey: string;
@@ -16,6 +16,10 @@ export default function TelegramSetup({ activeWalletKey }: TelegramSetupProps) {
   // Admin Key State
   const [adminKey, setAdminKey] = useState('');
   const [isKeySaved, setIsKeySaved] = useState(false);
+  
+  // Bot Token State
+  const [botToken, setBotToken] = useState('');
+  const [savingToken, setSavingToken] = useState(false);
 
   useEffect(() => {
     // Load saved key
@@ -43,6 +47,19 @@ export default function TelegramSetup({ activeWalletKey }: TelegramSetupProps) {
     setAdminKey('');
     setIsKeySaved(false);
     window.location.reload();
+  };
+
+  const handleSaveToken = async () => {
+    setSavingToken(true);
+    try {
+      const success = await saveTelegramToken(botToken);
+      if (success) {
+        setBotToken('');
+        fetchStatus();
+      }
+    } finally {
+      setSavingToken(false);
+    }
   };
 
   const fetchStatus = async () => {
@@ -124,6 +141,33 @@ export default function TelegramSetup({ activeWalletKey }: TelegramSetupProps) {
             Required to view transaction history and move funds.
           </p>
         )}
+      </div>
+
+      <div className="flex items-center gap-2 mb-2">
+        <Bot className="w-5 h-5 text-purple-400" />
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Bot Configuration</h3>
+      </div>
+      
+      <div className="mb-6 pb-6 border-b border-gray-800">
+         <div className="flex gap-2">
+            <input
+              type="password"
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+              placeholder={status?.botUsername && status.botUsername !== 'CanopiTradingBot' ? `Current: @${status.botUsername}` : "Enter Telegram Bot Token"}
+              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-600"
+            />
+            <button
+              onClick={handleSaveToken}
+              disabled={!botToken || savingToken}
+              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+            >
+              {savingToken ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set Token'}
+            </button>
+         </div>
+         <p className="text-[10px] text-gray-500 mt-2">
+            Create a bot with @BotFather and paste the token here to enable notifications.
+         </p>
       </div>
 
       <div className="flex items-center gap-2 mb-2">
