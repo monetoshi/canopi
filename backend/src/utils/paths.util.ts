@@ -6,24 +6,23 @@ import fs from 'fs';
  * Prioritizes DATA_DIR env var (set by Electron), falls back to process.cwd()/data
  */
 export function getDataDir(): string {
-  if (process.env.DATA_DIR) {
-    // Electron passes the User Data path directly
-    return process.env.DATA_DIR;
+  let dir = process.env.DATA_DIR;
+  
+  if (!dir) {
+    // Default for local dev: ./data
+    dir = path.join(process.cwd(), 'data');
   }
   
-  // Default for local dev: ./data
-  const devPath = path.join(process.cwd(), 'data');
-  
   // Ensure it exists
-  if (!fs.existsSync(devPath)) {
+  if (!fs.existsSync(dir)) {
     try {
-      fs.mkdirSync(devPath, { recursive: true });
+      fs.mkdirSync(dir, { recursive: true });
     } catch (e) {
       console.warn('Failed to create data dir:', e);
     }
   }
   
-  return devPath;
+  return dir;
 }
 
 /**
