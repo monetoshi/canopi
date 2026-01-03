@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Wallet, RefreshCw, Bot, Smartphone, LogOut } from 'lucide-react';
+import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus } from 'lucide-react';
 import type { WalletBalance, BotStatus } from '@/types';
 import { getBotStatus } from '@/lib/api';
+import CreateWalletModal from './CreateWalletModal';
 
 interface WalletStatusCardProps {
   balance: WalletBalance | null;
@@ -20,27 +21,40 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
   const [botLoading, setBotLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const fetchBotStatus = async () => {
+    setBotLoading(true);
+    try {
+      const status = await getBotStatus();
+      setBotStatus(status);
+    } catch (e) {
+      console.error('Failed to fetch bot status');
+    } finally {
+      setBotLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBotStatus = async () => {
-      setBotLoading(true);
-      try {
-        const status = await getBotStatus();
-        setBotStatus(status);
-      } catch (e) {
-        console.error('Failed to fetch bot status');
-      } finally {
-        setBotLoading(false);
-      }
-    };
-
     fetchBotStatus();
     const interval = setInterval(fetchBotStatus, 30000); // Poll every 30s
     return () => clearInterval(interval);
   }, []);
 
+  const handleWalletCreated = () => {
+    setShowCreateModal(false);
+    fetchBotStatus(); // Refresh status immediately
+  };
+
   return (
-    <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
+    <>
+      {showCreateModal && (
+        <CreateWalletModal 
+          onCreated={handleWalletCreated} 
+          onCancel={() => setShowCreateModal(false)} 
+        />
+      )}
+      <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
       
       {/* Header with Toggle */}
       <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-800/50">
@@ -139,14 +153,19 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-200 text-sm">
                       ⚠️ No Bot Wallet Configured
                    </div>
-                   <p className="text-xs text-gray-400">
-                      Run <code className="text-gray-300">npm run setup-wallet</code> in backend to enable automated trading.
-                   </p>
+                   <button 
+                     onClick={() => setShowCreateModal(true)}
+                     className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                   >
+                     <Plus className="w-4 h-4" />
+                     Create Trading Wallet
+                   </button>
                 </div>
               )}
            </>
         )}
       </div>
     </div>
+    </>
   );
 }

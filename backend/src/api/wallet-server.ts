@@ -73,6 +73,50 @@ app.use((req, res, next) => {
 });
 
 /**
+ * Setup New Wallet
+ */
+app.post('/api/wallet/setup', async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+
+    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    if (fs.existsSync(walletPath)) {
+      return res.status(400).json({ success: false, error: 'Wallet already exists' });
+    }
+
+    // Generate new keypair
+    const Keypair = require('@solana/web3.js').Keypair;
+    const wallet = Keypair.generate();
+    const privateKey = Buffer.from(wallet.secretKey).toString('base64');
+
+    // Encrypt
+    const { encrypt } = require('../utils/security.util');
+    const encryptedData = encrypt(privateKey, password);
+
+    // Save to disk
+    fs.writeFileSync(walletPath, JSON.stringify(encryptedData, null, 2));
+
+    // Set env var to unlock immediately
+    process.env.WALLET_PASSWORD = password;
+    
+    logger.info(`✅ New wallet created: ${wallet.publicKey.toString()}`);
+
+    res.json({ 
+      success: true, 
+      message: 'Wallet created successfully',
+      publicKey: wallet.publicKey.toString() 
+    });
+
+  } catch (error: any) {
+    logger.error('Error creating wallet:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * Unlock Wallet
  */
 app.post('/api/wallet/unlock', async (req: Request, res: Response) => {

@@ -8,7 +8,7 @@ import type { ApiResponse, Position, WalletBalance, StrategyConfig, PriceData, E
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_URL,
   timeout: 120000, // 2 minutes for long-running private transactions
   headers: {
