@@ -133,6 +133,12 @@ Navigate to the **Privacy Shield** card. Enter an amount (e.g., 1 SOL) and click
 
 ---
 
+## Buy me a coffee ☕
+
+If you find Canopi useful, consider supporting development:
+
+**SOL**: `76Tnr8YLnasffDmArsUgBRERGmBsYStmdA1pcFQHAHir`
+
 ## License
 MIT License - see [LICENSE](LICENSE) file for details.
 Copyright (c) 2025 Canopi (Monetoshi Project)
