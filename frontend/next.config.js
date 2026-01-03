@@ -2,7 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
-  // assetPrefix: './', // Disabled to fix next/font error in dev mode
+  // Use relative paths for Electron production build, but default paths for dev
+  assetPrefix: process.env.NODE_ENV === 'development' ? undefined : './',
   images: {
     unoptimized: true,
   },
