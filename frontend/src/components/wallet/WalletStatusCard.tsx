@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus } from 'lucide-react';
+import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus, Lock, Key } from 'lucide-react';
 import type { WalletBalance, BotStatus } from '@/types';
 import { getBotStatus } from '@/lib/api';
 import CreateWalletModal from './CreateWalletModal';
+import UnlockWalletModal from './UnlockWalletModal';
 
 interface WalletStatusCardProps {
   balance: WalletBalance | null;
@@ -22,12 +23,16 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
   const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
   const [botLoading, setBotLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
 
   const fetchBotStatus = async () => {
     setBotLoading(true);
     try {
       const status = await getBotStatus();
       setBotStatus(status);
+      if (status.isLocked) {
+        setShowUnlockModal(true);
+      }
     } catch (e) {
       console.error('Failed to fetch bot status');
     } finally {
@@ -46,12 +51,22 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
     fetchBotStatus(); // Refresh status immediately
   };
 
+  const handleUnlocked = () => {
+    setShowUnlockModal(false);
+    fetchBotStatus();
+  };
+
   return (
     <>
       {showCreateModal && (
         <CreateWalletModal 
           onCreated={handleWalletCreated} 
           onCancel={() => setShowCreateModal(false)} 
+        />
+      )}
+      {showUnlockModal && (
+        <UnlockWalletModal 
+          onUnlock={handleUnlocked} 
         />
       )}
       <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
@@ -131,6 +146,20 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
                  <div className="text-gray-400 text-sm flex items-center gap-2">
                    <RefreshCw className="w-3 h-3 animate-spin" />
                    Loading bot status...
+                </div>
+              ) : botStatus && botStatus.isLocked ? (
+                <div className="space-y-3 animate-fadeIn">
+                   <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200 text-sm flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Wallet Locked
+                   </div>
+                   <button 
+                     onClick={() => setShowUnlockModal(true)}
+                     className="w-full py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                   >
+                     <Key className="w-4 h-4" />
+                     Unlock Wallet
+                   </button>
                 </div>
               ) : botStatus && botStatus.configured ? (
                 <div className="space-y-3 animate-fadeIn">
