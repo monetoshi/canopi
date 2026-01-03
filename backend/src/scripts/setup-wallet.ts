@@ -7,10 +7,14 @@
 import readline from 'readline';
 import path from 'path';
 import { encrypt, saveEncryptedWallet } from '../utils/security.util';
+import { getWalletPath } from '../utils/paths.util';
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
 
-const WALLET_FILE = path.join(process.cwd(), 'data', 'wallet.enc.json');
+// Path to wallet file
+const WALLET_FILE = getWalletPath();
+
+async function question(query: string): Promise<string> {
 
 const rl = readline.createInterface({
   input: process.stdin,

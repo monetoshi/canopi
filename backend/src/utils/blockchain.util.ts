@@ -3,11 +3,13 @@
  * Helper functions for Solana blockchain interactions
  */
 
-import { Connection, PublicKey, Transaction, VersionedTransaction, Keypair } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
-import * as dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import { loadEncryptedWallet, decrypt } from './security.util';
+import { getWalletPath } from './paths.util';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -39,7 +41,7 @@ export function getWalletKeypair(): Keypair | null {
   // Priority 2: Encrypted Keystore
   const password = process.env.WALLET_PASSWORD;
   if (password) {
-    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    const walletPath = getWalletPath();
     const encryptedData = loadEncryptedWallet(walletPath);
     
     if (encryptedData) {

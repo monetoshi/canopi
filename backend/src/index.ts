@@ -19,6 +19,7 @@ import { limitOrderManager } from './core/limit-order-manager';
 import { dcaOrderManager } from './core/dca-order-manager';
 import { pendingSellsManager } from './core/pending-sells-manager';
 import { logger } from './utils/logger.util';
+import { getWalletPath } from './utils/paths.util';
 
 // Load environment variables
 dotenv.config();
@@ -75,7 +76,7 @@ async function startServer() {
   logger.info('✅ Database managers initialized');
 
   // Check for encrypted wallet
-  const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+  const walletPath = getWalletPath();
   if (fs.existsSync(walletPath) && !process.env.WALLET_PASSWORD && !process.env.WALLET_PRIVATE_KEY) {
     console.log('\n🔒 Encrypted wallet found, but no password provided.');
     console.log('⚠️  Server starting in LOCKED mode. Please unlock via API or UI.');

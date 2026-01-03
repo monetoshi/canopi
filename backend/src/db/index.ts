@@ -11,6 +11,7 @@ import * as dotenv from 'dotenv';
 import * as schema from './schema';
 import path from 'path';
 import fs from 'fs';
+import { getDataDir } from '../utils/paths.util';
 
 // Load environment variables
 dotenv.config();
@@ -59,9 +60,8 @@ if (hasDatabaseUrl) {
   // ---------------------------------------------------------
   console.log('[Database] 📂 using Local Embedded Database (PGLite)');
   
-  // Use DATA_DIR env var if set (for Electron/Desktop apps), otherwise default to local project data
-  const baseDataDir = process.env.DATA_DIR || process.cwd();
-  const dataDir = path.join(baseDataDir, 'data', 'pglite');
+  // Use centralized data directory (handles Electron/Prod paths)
+  const dataDir = path.join(getDataDir(), 'pglite');
   
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });

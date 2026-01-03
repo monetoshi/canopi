@@ -18,6 +18,7 @@ import { priceService } from '../services/price.service';
 import { taxService } from '../services/tax.service';
 import { getConnection, getSOLBalance, isValidPublicKey, getWalletKeypair } from '../utils/blockchain.util';
 import { loadEncryptedWallet, decrypt } from '../utils/security.util';
+import { getWalletPath } from '../utils/paths.util';
 import { logger } from '../utils/logger.util';
 import { ApiResponse, ExitStrategy, Position } from '../types';
 import { getAllStrategies, isValidStrategy, getStrategy } from '../core/strategies';
@@ -82,7 +83,7 @@ app.post('/api/wallet/setup', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
     }
 
-    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    const walletPath = getWalletPath();
     if (fs.existsSync(walletPath)) {
       return res.status(400).json({ success: false, error: 'Wallet already exists' });
     }
@@ -126,7 +127,7 @@ app.post('/api/wallet/unlock', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Password required' });
     }
 
-    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    const walletPath = getWalletPath();
     if (!fs.existsSync(walletPath)) {
       return res.status(404).json({ success: false, error: 'No encrypted wallet found' });
     }
@@ -1945,7 +1946,7 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
     let balance = 0;
     
     // Check if wallet exists but is locked
-    const walletPath = path.join(process.cwd(), 'data', 'wallet.enc.json');
+    const walletPath = getWalletPath();
     const isLocked = fs.existsSync(walletPath) && !process.env.WALLET_PASSWORD && !process.env.WALLET_PRIVATE_KEY;
     
     if (wallet) {
