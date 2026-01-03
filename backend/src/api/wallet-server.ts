@@ -90,8 +90,9 @@ app.post('/api/wallet/setup', async (req: Request, res: Response) => {
 
     // Generate new keypair
     const Keypair = require('@solana/web3.js').Keypair;
+    const bs58 = require('bs58');
     const wallet = Keypair.generate();
-    const privateKey = Buffer.from(wallet.secretKey).toString('base64');
+    const privateKey = bs58.encode(wallet.secretKey);
 
     // Encrypt
     const { encrypt } = require('../utils/security.util');
@@ -113,6 +114,24 @@ app.post('/api/wallet/setup', async (req: Request, res: Response) => {
 
   } catch (error: any) {
     logger.error('Error creating wallet:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Reset/Delete Wallet
+ * DANGER: This deletes the private key file!
+ */
+app.delete('/api/wallet/reset', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const walletPath = getWalletPath();
+    if (fs.existsSync(walletPath)) {
+      fs.unlinkSync(walletPath);
+      delete process.env.WALLET_PASSWORD;
+      logger.info('⚠️ Wallet deleted/reset by user');
+    }
+    res.json({ success: true, message: 'Wallet reset' });
+  } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2071,13 +2090,7 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
         configured: !!wallet,
         isLocked,
         publicKey: wallet ? wallet.publicKey.toString() : null,
-        balance,
-        debug: {
-          path: walletPath,
-          exists: fs.existsSync(walletPath),
-          envPassword: !!process.env.WALLET_PASSWORD,
-          dataDir: process.env.DATA_DIR || 'not set'
-        }
+        balance
       },
       timestamp: Date.now()
     });

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus, Lock, Key, ArrowUpRight, Download } from 'lucide-react';
 import type { WalletBalance, BotStatus } from '@/types';
-import { getBotStatus } from '@/lib/api';
+import { getBotStatus, api } from '@/lib/api';
 import CreateWalletModal from './CreateWalletModal';
 import UnlockWalletModal from './UnlockWalletModal';
 import ExportWalletModal from './ExportWalletModal';
@@ -58,6 +58,18 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
   const handleUnlocked = () => {
     setShowUnlockModal(false);
     fetchBotStatus();
+  };
+
+  const handleReset = async () => {
+    if (!window.confirm('Are you sure? This will DELETE your bot wallet file. Make sure you have exported your key first if it has funds!')) return;
+    
+    try {
+      await api.delete('/api/wallet/reset');
+      setBotStatus(null);
+      fetchBotStatus();
+    } catch (e) {
+      console.error('Failed to reset wallet');
+    }
   };
 
   return (
@@ -222,21 +234,19 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
                      <Plus className="w-4 h-4" />
                      Create Trading Wallet
                    </button>
+                   
+                   {/* Reset Option for corrupted states */}
+                   <button 
+                     onClick={handleReset}
+                     className="w-full py-1 text-xs text-red-400 hover:text-red-300 underline"
+                   >
+                     Reset / Delete Wallet
+                   </button>
                 </div>
               )}
            </>
         )}
       </div>
-
-      {/* Debug Info (Beta Only) */}
-      {botStatus?.debug && (
-        <div className="mt-4 pt-4 border-t border-gray-800/50 text-[10px] font-mono text-gray-600 overflow-hidden">
-          <p>Path: {botStatus.debug.path}</p>
-          <p>Exists: {botStatus.debug.exists ? 'YES' : 'NO'}</p>
-          <p>Password Set: {botStatus.debug.envPassword ? 'YES' : 'NO'}</p>
-          <p>Data Dir: {botStatus.debug.dataDir}</p>
-        </div>
-      )}
     </div>
     </>
   );

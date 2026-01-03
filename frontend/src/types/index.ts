@@ -191,12 +191,6 @@ export interface BotStatus {
   isLocked?: boolean;
   publicKey: string | null;
   balance: number;
-  debug?: {
-    path: string;
-    exists: boolean;
-    envPassword: boolean;
-    dataDir: string;
-  };
 }
 
 export interface Trade {
