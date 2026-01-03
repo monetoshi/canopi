@@ -14,8 +14,6 @@ import bs58 from 'bs58';
 // Path to wallet file
 const WALLET_FILE = getWalletPath();
 
-async function question(query: string): Promise<string> {
-
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout

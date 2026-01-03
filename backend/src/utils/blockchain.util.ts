@@ -3,7 +3,7 @@
  * Helper functions for Solana blockchain interactions
  */
 
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import fs from 'fs';
 import path from 'path';
