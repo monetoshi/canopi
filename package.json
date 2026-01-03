@@ -22,6 +22,7 @@
   "build": {
     "appId": "com.canopi.bot",
     "productName": "Canopi",
+    "asar": false,
     "directories": {
       "output": "dist-electron"
     },
@@ -31,9 +32,6 @@
       "backend/package.json",
       "backend/node_modules/**/*",
       "frontend/out/**/*"
-    ],
-    "asarUnpack": [
-      "backend/**/*"
     ],
     "mac": {
       "category": "public.app-category.finance",

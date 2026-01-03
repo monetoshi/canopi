@@ -34,7 +34,7 @@ function startBackend() {
   // In production, we unpack the backend to app.asar.unpacked because fork() cannot run from ASAR
   const backendEntry = isDev 
     ? path.join(__dirname, '../backend/src/index.ts')
-    : path.join(process.resourcesPath, 'app.asar.unpacked', 'backend/dist/index.js');
+    : path.join(__dirname, '../backend/dist/index.js');
 
   log(`Backend Entry: ${backendEntry}`);
 
