@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus, Lock, Key } from 'lucide-react';
+import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus, Lock, Key, ArrowUpRight, Download } from 'lucide-react';
 import type { WalletBalance, BotStatus } from '@/types';
 import { getBotStatus } from '@/lib/api';
 import CreateWalletModal from './CreateWalletModal';
 import UnlockWalletModal from './UnlockWalletModal';
+import ExportWalletModal from './ExportWalletModal';
+import WithdrawModal from './WithdrawModal';
 
 interface WalletStatusCardProps {
   balance: WalletBalance | null;
@@ -24,6 +26,8 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
   const [botLoading, setBotLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   const fetchBotStatus = async () => {
     setBotLoading(true);
@@ -67,6 +71,18 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
       {showUnlockModal && (
         <UnlockWalletModal 
           onUnlock={handleUnlocked} 
+        />
+      )}
+      {showExportModal && (
+        <ExportWalletModal 
+          onClose={() => setShowExportModal(false)} 
+        />
+      )}
+      {showWithdrawModal && botStatus && (
+        <WithdrawModal 
+          onClose={() => setShowWithdrawModal(false)}
+          onSuccess={fetchBotStatus}
+          maxAmount={botStatus.balance}
         />
       )}
       <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
@@ -175,6 +191,23 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
                   <div>
                     <p className="text-sm text-gray-400">Bot Balance</p>
                     <p className="text-2xl font-bold text-emerald-400">{botStatus.balance.toFixed(4)} SOL</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <button 
+                      onClick={() => setShowWithdrawModal(true)}
+                      className="py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors border border-emerald-500/20"
+                    >
+                      <ArrowUpRight className="w-4 h-4" />
+                      Withdraw
+                    </button>
+                    <button 
+                      onClick={() => setShowExportModal(true)}
+                      className="py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export Key
+                    </button>
                   </div>
                 </div>
               ) : (

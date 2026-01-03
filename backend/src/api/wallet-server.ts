@@ -157,6 +157,117 @@ app.post('/api/wallet/unlock', async (req: Request, res: Response) => {
 });
 
 /**
+ * Export Private Key
+ */
+app.post('/api/wallet/export', async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Password required' });
+    }
+
+    const walletPath = getWalletPath();
+    if (!fs.existsSync(walletPath)) {
+      return res.status(404).json({ success: false, error: 'No wallet found' });
+    }
+
+    const encryptedData = loadEncryptedWallet(walletPath);
+    if (!encryptedData) {
+      return res.status(500).json({ success: false, error: 'Failed to load wallet data' });
+    }
+
+    try {
+      const decryptedKey = decrypt(encryptedData, password);
+      if (!decryptedKey) throw new Error('Decryption failed');
+      
+      // If key is array format, convert to base58
+      let privateKeyBase58 = decryptedKey;
+      if (decryptedKey.startsWith('[') && decryptedKey.endsWith(']')) {
+         const { Keypair } = require('@solana/web3.js');
+         const bs58 = require('bs58');
+         const kp = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
+         privateKeyBase58 = bs58.encode(kp.secretKey);
+      }
+
+      res.json({ success: true, privateKey: privateKeyBase58 });
+    } catch (error) {
+      return res.status(401).json({ success: false, error: 'Invalid password' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Withdraw Funds
+ */
+app.post('/api/wallet/withdraw', async (req: Request, res: Response) => {
+  try {
+    const { password, destination, amount } = req.body;
+    
+    if (!password || !destination || !amount) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    if (!isValidPublicKey(destination)) {
+      return res.status(400).json({ success: false, error: 'Invalid destination address' });
+    }
+
+    const walletPath = getWalletPath();
+    const encryptedData = loadEncryptedWallet(walletPath);
+    
+    if (!encryptedData) {
+      return res.status(404).json({ success: false, error: 'Wallet not found' });
+    }
+
+    // 1. Decrypt Wallet
+    let signer;
+    try {
+      const decryptedKey = decrypt(encryptedData, password);
+      const { Keypair } = require('@solana/web3.js');
+      const bs58 = require('bs58');
+      
+      if (decryptedKey.startsWith('[') && decryptedKey.endsWith(']')) {
+         signer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
+      } else {
+         signer = Keypair.fromSecretKey(bs58.decode(decryptedKey));
+      }
+    } catch (error) {
+      return res.status(401).json({ success: false, error: 'Invalid password' });
+    }
+
+    // 2. Prepare Transaction
+    const { SystemProgram, Transaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
+    const transferAmount = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
+    
+    // Check balance
+    const currentBalance = await connection.getBalance(signer.publicKey);
+    if (currentBalance < transferAmount + 5000) { // 5000 lamports for fee
+       return res.status(400).json({ success: false, error: 'Insufficient balance' });
+    }
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: signer.publicKey,
+        toPubkey: new PublicKey(destination),
+        lamports: transferAmount,
+      })
+    );
+
+    // 3. Send
+    const signature = await connection.sendTransaction(transaction, [signer]);
+    
+    logger.info(`Withdrawal successful: ${signature}`);
+    
+    res.json({ success: true, signature });
+
+  } catch (error: any) {
+    logger.error('Withdrawal failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * Execute trade using Bot Wallet (Server-Side Signing)
  */
 app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response) => {
