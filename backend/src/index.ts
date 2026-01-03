@@ -67,13 +67,18 @@ function askPassword(query: string): Promise<string> {
 async function startServer() {
   // 1. Wait for database managers to initialize
   logger.info('Initializing database managers...');
-  await Promise.all([
-    positionManager.waitForReady(),
-    limitOrderManager.waitForReady(),
-    dcaOrderManager.waitForReady(),
-    pendingSellsManager.waitForReady()
-  ]);
-  logger.info('✅ Database managers initialized');
+  try {
+    await Promise.all([
+      positionManager.waitForReady(),
+      limitOrderManager.waitForReady(),
+      dcaOrderManager.waitForReady(),
+      pendingSellsManager.waitForReady()
+    ]);
+    logger.info('✅ Database managers initialized');
+  } catch (dbError: any) {
+    logger.error('❌ Database initialization failed:', dbError);
+    // Continue starting server so we can report error to UI
+  }
 
   // Check for encrypted wallet
   const walletPath = getWalletPath();

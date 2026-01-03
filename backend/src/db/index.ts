@@ -68,8 +68,15 @@ if (hasDatabaseUrl) {
   }
 
   // Initialize PGLite instance
-  pglite = new PGlite(dataDir);
-  db = drizzlePglite(pglite, { schema });
+  try {
+    pglite = new PGlite(dataDir);
+    db = drizzlePglite(pglite, { schema });
+    console.log(`[Database] ✅ Local database active at: ${dataDir}`);
+  } catch (e: any) {
+    console.error(`[Database] ❌ Failed to initialize PGLite at ${dataDir}:`, e);
+    // Fallback or rethrow? For now rethrow but logged.
+    throw e;
+  }
 
   // Mock pool interface for compatibility
   pool = {
