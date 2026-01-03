@@ -227,6 +227,16 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
            </>
         )}
       </div>
+
+      {/* Debug Info (Beta Only) */}
+      {botStatus?.debug && (
+        <div className="mt-4 pt-4 border-t border-gray-800/50 text-[10px] font-mono text-gray-600 overflow-hidden">
+          <p>Path: {botStatus.debug.path}</p>
+          <p>Exists: {botStatus.debug.exists ? 'YES' : 'NO'}</p>
+          <p>Password Set: {botStatus.debug.envPassword ? 'YES' : 'NO'}</p>
+          <p>Data Dir: {botStatus.debug.dataDir}</p>
+        </div>
+      )}
     </div>
     </>
   );

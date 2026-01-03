@@ -2071,7 +2071,13 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
         configured: !!wallet,
         isLocked,
         publicKey: wallet ? wallet.publicKey.toString() : null,
-        balance
+        balance,
+        debug: {
+          path: walletPath,
+          exists: fs.existsSync(walletPath),
+          envPassword: !!process.env.WALLET_PASSWORD,
+          dataDir: process.env.DATA_DIR || 'not set'
+        }
       },
       timestamp: Date.now()
     });
