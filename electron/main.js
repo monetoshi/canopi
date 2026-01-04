@@ -116,7 +116,11 @@ function createWindow() {
     : `file://${path.join(__dirname, '../frontend/out/index.html')}`;
 
   console.log('[Electron] Loading URL:', url);
-  mainWindow.loadURL(url);
+  
+  // Clear cache to ensure fresh UI loads (prevents stale file:// issues after updates)
+  mainWindow.webContents.session.clearCache().then(() => {
+    mainWindow.loadURL(url);
+  });
 
   // Only show the window when it's ready to prevent visual glitches
   mainWindow.once('ready-to-show', () => {
