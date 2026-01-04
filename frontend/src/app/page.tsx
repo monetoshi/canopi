@@ -45,14 +45,17 @@ export default function Home() {
   // Use either the connected Phantom wallet OR the server wallet public key if in integrated mode
   const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
   
+  const fetchBotStatus = async () => {
+    try {
+      const status = await getBotStatus();
+      setBotStatus(status);
+    } catch (e) {
+      console.error('Failed to fetch bot status', e);
+    }
+  };
+
   useEffect(() => {
-    const checkBot = async () => {
-      try {
-        const status = await getBotStatus();
-        setBotStatus(status);
-      } catch (e) {}
-    };
-    checkBot();
+    fetchBotStatus();
   }, []);
 
   const activeWalletKey = connected ? publicKey?.toString() : (showIntegrated ? botStatus?.publicKey : null);
@@ -305,6 +308,8 @@ export default function Home() {
                 loading={loading} 
                 error={error} 
                 initialViewMode={(!connected && showIntegrated) ? 'bot' : 'connected'}
+                botStatus={botStatus}
+                onStatusChange={fetchBotStatus}
               />
 
               {/* Portfolio Stats */}

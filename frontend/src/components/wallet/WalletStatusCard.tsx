@@ -15,49 +15,42 @@ interface WalletStatusCardProps {
   loading: boolean;
   error: string | null;
   initialViewMode?: ViewMode;
+  botStatus: BotStatus | null;
+  onStatusChange: () => void;
 }
 
 type ViewMode = 'connected' | 'bot';
 
-export default function WalletStatusCard({ balance, loading, error, initialViewMode = 'connected' }: WalletStatusCardProps) {
+export default function WalletStatusCard({ 
+  balance, 
+  loading, 
+  error, 
+  initialViewMode = 'connected',
+  botStatus,
+  onStatusChange
+}: WalletStatusCardProps) {
   const { disconnect } = useWallet();
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
-  const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
-  const [botLoading, setBotLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
-  const fetchBotStatus = async () => {
-    setBotLoading(true);
-    try {
-      const status = await getBotStatus();
-      setBotStatus(status);
-      if (status.isLocked) {
-        setShowUnlockModal(true);
-      }
-    } catch (e) {
-      console.error('Failed to fetch bot status');
-    } finally {
-      setBotLoading(false);
-    }
-  };
-
+  // Check for locked status when botStatus updates
   useEffect(() => {
-    fetchBotStatus();
-    const interval = setInterval(fetchBotStatus, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, []);
+    if (botStatus?.isLocked) {
+      setShowUnlockModal(true);
+    }
+  }, [botStatus?.isLocked]);
 
   const handleWalletCreated = () => {
     setShowCreateModal(false);
-    fetchBotStatus(); // Refresh status immediately
+    onStatusChange(); // Refresh parent
   };
 
   const handleUnlocked = () => {
     setShowUnlockModal(false);
-    fetchBotStatus();
+    onStatusChange();
   };
 
   const handleReset = async () => {
@@ -65,8 +58,7 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
     
     try {
       await api.delete('/api/wallet/reset');
-      setBotStatus(null);
-      fetchBotStatus();
+      onStatusChange();
     } catch (e) {
       console.error('Failed to reset wallet');
     }
@@ -93,7 +85,7 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
       {showWithdrawModal && botStatus && (
         <WithdrawModal 
           onClose={() => setShowWithdrawModal(false)}
-          onSuccess={fetchBotStatus}
+          onSuccess={onStatusChange}
           maxAmount={botStatus.balance}
         />
       )}
@@ -170,12 +162,7 @@ export default function WalletStatusCard({ balance, loading, error, initialViewM
         ) : (
            // BOT WALLET VIEW
            <>
-              {botLoading && !botStatus ? (
-                 <div className="text-gray-400 text-sm flex items-center gap-2">
-                   <RefreshCw className="w-3 h-3 animate-spin" />
-                   Loading bot status...
-                </div>
-              ) : botStatus && botStatus.isLocked ? (
+              {botStatus && botStatus.isLocked ? (
                 <div className="space-y-3 animate-fadeIn">
                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200 text-sm flex items-center gap-2">
                       <Lock className="w-4 h-4" />
