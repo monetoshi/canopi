@@ -20,7 +20,7 @@ interface UseWebSocketReturn {
   reconnect: () => void;
 }
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/ws';
 const RECONNECT_DELAY = 3000; // 3 seconds
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 

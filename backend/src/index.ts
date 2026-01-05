@@ -20,6 +20,8 @@ import { dcaOrderManager } from './core/dca-order-manager';
 import { pendingSellsManager } from './core/pending-sells-manager';
 import { logger } from './utils/logger.util';
 import { getWalletPath } from './utils/paths.util';
+import { configUtil } from './utils/config.util';
+import crypto from 'crypto';
 
 // Load environment variables
 dotenv.config();
@@ -78,6 +80,14 @@ async function startServer() {
   } catch (dbError: any) {
     logger.error('❌ Database initialization failed:', dbError);
     // Continue starting server so we can report error to UI
+  }
+
+  // Check/Generate Admin API Key
+  const config = configUtil.get();
+  if (!process.env.ADMIN_API_KEY && !config.adminApiKey) {
+    const newKey = crypto.randomBytes(32).toString('hex');
+    configUtil.set('adminApiKey', newKey);
+    logger.info('🔐 Generated new Admin API Key');
   }
 
   // Check for encrypted wallet

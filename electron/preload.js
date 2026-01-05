@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
+  getAdminKey: () => ipcRenderer.invoke('get-admin-key'),
   // Expose protected methods that allow the renderer process to use
   // the ipcRenderer without exposing the entire object
   send: (channel, data) => {

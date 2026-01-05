@@ -132,6 +132,20 @@ function createWindow() {
   });
 }
 
+// IPC Handlers
+ipcMain.handle('get-admin-key', () => {
+  try {
+    const configPath = path.join(userDataPath, 'config.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      return config.adminApiKey || null;
+    }
+  } catch (e) {
+    console.error('Failed to read admin key:', e);
+  }
+  return null;
+});
+
 app.whenReady().then(() => {
   // Only start the backend manually in production
   // In dev, "npm run desktop" starts it separately
