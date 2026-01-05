@@ -17,11 +17,41 @@ import { getBotStatus } from '@/lib/api';
 // Import wallet adapter CSS
 import '@solana/wallet-adapter-react-ui/styles.css';
 
+declare global {
+  interface Window {
+    electron?: {
+      getAdminKey: () => Promise<string | null>;
+    };
+  }
+}
+
 export default function WalletProvider({ children }: { children: React.ReactNode }) {
   // Use mainnet by default
   const network = WalletAdapterNetwork.Mainnet;
   const [isLocked, setIsLocked] = useState(false);
   const [checkTrigger, setCheckTrigger] = useState(0);
+
+  // Sync Admin Key from Electron
+  useEffect(() => {
+    const initAdminKey = async () => {
+      if (typeof window !== 'undefined' && window.electron) {
+        try {
+          const key = await window.electron.getAdminKey();
+          if (key) {
+            const current = localStorage.getItem('admin_api_key');
+            if (current !== key) {
+              localStorage.setItem('admin_api_key', key);
+              console.log('[App] Admin key synchronized from Electron');
+              // Reload to ensure API client picks it up? No, api.ts reads from localStorage on every request.
+            }
+          }
+        } catch (e) {
+          console.error('[App] Failed to sync admin key:', e);
+        }
+      }
+    };
+    initAdminKey();
+  }, []);
 
   const endpoint = useMemo(() => {
     if (process.env.NEXT_PUBLIC_RPC_URL) {
