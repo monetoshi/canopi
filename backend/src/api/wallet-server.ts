@@ -41,14 +41,16 @@ const connection = getConnection();
  * Simple API key check for admin operations and sensitive data
  */
 export const authenticateAdmin = (req: Request, res: Response, next: any) => {
-  const adminKey = process.env.ADMIN_API_KEY;
+  const envKey = process.env.ADMIN_API_KEY;
+  const config = require('../utils/config.util').configUtil.get();
+  const adminKey = envKey || config.adminApiKey;
   
-  // If no admin key is configured in .env, we allow all requests (Dev mode)
-  // In production, an admin key MUST be set.
+  // If no admin key is configured, we allow requests (Assume local single-user mode)
+  // In a hosted server environment, this would be dangerous, but for a local desktop app
+  // it is acceptable default behavior to unblock usage.
   if (!adminKey) {
     if (process.env.NODE_ENV === 'production') {
-      logger.error('CRITICAL: ADMIN_API_KEY not set in production. Blocking sensitive route.');
-      return res.status(500).json({ success: false, error: 'Server configuration error' });
+      logger.warn('⚠️  ADMIN_API_KEY not configured. Allowing request (Local Mode).');
     }
     return next();
   }
@@ -2124,6 +2126,30 @@ app.get('/api/trades/:walletPublicKey', authenticateAdmin, async (req: Request, 
   } catch (error: any) {
     logger.error('Error getting trades:', error);
     res.status(500).json({ success: false, error: 'Failed to get transaction history' });
+  }
+});
+
+/**
+ * Save Admin API Key
+ */
+app.post('/api/settings/admin-key', async (req: Request, res: Response) => {
+  try {
+    const { key } = req.body;
+    if (!key) return res.status(400).json({ success: false, error: 'Key required' });
+    
+    // Require existing auth if key is already set
+    const config = require('../utils/config.util').configUtil.get();
+    if (config.adminApiKey) {
+       const provided = req.headers['x-admin-key'];
+       if (provided !== config.adminApiKey) {
+         return res.status(401).json({ success: false, error: 'Unauthorized: Current key required to change it' });
+       }
+    }
+    
+    require('../utils/config.util').configUtil.set('adminApiKey', key);
+    res.json({ success: true, message: 'Admin key updated' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

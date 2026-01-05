@@ -8,6 +8,7 @@ const CONFIG_FILE = path.join(getDataDir(), 'config.json');
 export interface AppConfig {
   telegramBotToken?: string;
   rpcUrl?: string;
+  adminApiKey?: string;
 }
 
 export const configUtil = {
