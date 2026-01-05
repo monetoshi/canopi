@@ -75,23 +75,23 @@ export function useWebSocket(
           const messageBytes = new TextEncoder().encode(messageText);
           
           let signatureBase58 = '';
+          let adminKey = '';
           
           if (signMessage) {
             // Standard wallet signing
             const signature = await signMessage(messageBytes);
             signatureBase58 = bs58.encode(signature);
           } else {
-            // Integrated mode (Skip auth or implement server-side auth if needed)
-            // For now, we'll try to subscribe without signature if signMessage is missing (integrated mode)
-            // The backend will reject it if it's not in dev mode and missing ADMIN_API_KEY.
-            // Note: In integrated mode, the user isn't using Phantom, so they can't sign.
+            // Integrated mode: Use Admin Key
+            adminKey = localStorage.getItem('admin_api_key') || '';
           }
 
-          // 2. Subscribe to wallet positions with signature
+          // 2. Subscribe to wallet positions with signature or admin key
           ws.send(JSON.stringify({
             type: 'subscribe_wallet',
             walletPublicKey: walletPublicKey,
             signature: signatureBase58,
+            adminKey: adminKey,
             timestamp: timestamp
           }));
 

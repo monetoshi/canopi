@@ -21,6 +21,7 @@ import { pendingSellsManager } from './core/pending-sells-manager';
 import { logger } from './utils/logger.util';
 import { getWalletPath } from './utils/paths.util';
 import { configUtil } from './utils/config.util';
+import { initDatabase } from './db/index';
 import crypto from 'crypto';
 
 // Load environment variables
@@ -67,7 +68,10 @@ function askPassword(query: string): Promise<string> {
 }
 
 async function startServer() {
-  // 1. Wait for database managers to initialize
+  // 1. Initialize Database (Migrations)
+  await initDatabase();
+
+  // 2. Wait for database managers to initialize
   logger.info('Initializing database managers...');
   try {
     await Promise.all([

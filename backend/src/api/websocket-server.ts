@@ -13,6 +13,7 @@ import { WebSocketMessage, WebSocketMessageType } from '../types';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PublicKey } from '@solana/web3.js';
+import { configUtil } from '../utils/config.util';
 
 interface Client {
   ws: WebSocket;
@@ -94,45 +95,64 @@ export class WebSocketManager {
 
     switch (message.type) {
       case 'subscribe_wallet':
-        if (message.walletPublicKey && message.signature && message.timestamp) {
-          try {
-            // Verify timestamp (prevent replay attacks - 5 min window)
-            const now = Date.now();
-            if (Math.abs(now - message.timestamp) > 5 * 60 * 1000) {
-              this.sendMessage(ws, { type: 'error', data: { message: 'Subscription request expired' }, timestamp: now });
+        if (message.walletPublicKey) {
+          // Auth Method 1: Signature
+          if (message.signature && message.timestamp) {
+            try {
+              // Verify timestamp (prevent replay attacks - 5 min window)
+              const now = Date.now();
+              if (Math.abs(now - message.timestamp) > 5 * 60 * 1000) {
+                this.sendMessage(ws, { type: 'error', data: { message: 'Subscription request expired' }, timestamp: now });
+                return;
+              }
+
+              // Verify signature
+              const messageText = `Subscribe to Canopi: ${message.timestamp}`;
+              const messageBytes = new TextEncoder().encode(messageText);
+              const signatureBytes = bs58.decode(message.signature);
+              const publicKeyBytes = new PublicKey(message.walletPublicKey).toBytes();
+
+              const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+
+              if (!isValid) {
+                logger.warn(`Invalid signature for wallet subscription: ${message.walletPublicKey}`);
+                this.sendMessage(ws, { type: 'error', data: { message: 'Invalid signature' }, timestamp: now });
+                return;
+              }
+            } catch (e: any) {
+              logger.error(`Error verifying signature: ${e.message}`);
+              this.sendMessage(ws, { type: 'error', data: { message: 'Authentication error' }, timestamp: Date.now() });
               return;
             }
-
-            // Verify signature
-            const messageText = `Subscribe to Canopi: ${message.timestamp}`;
-            const messageBytes = new TextEncoder().encode(messageText);
-            const signatureBytes = bs58.decode(message.signature);
-            const publicKeyBytes = new PublicKey(message.walletPublicKey).toBytes();
-
-            const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
-
-            if (!isValid) {
-              logger.warn(`Invalid signature for wallet subscription: ${message.walletPublicKey}`);
-              this.sendMessage(ws, { type: 'error', data: { message: 'Invalid signature' }, timestamp: now });
-              return;
-            }
-
-            client.walletPublicKey = message.walletPublicKey;
-            logger.info(`Client authenticated and subscribed to wallet: ${message.walletPublicKey.slice(0, 8)}...`);
-
-            // Send current positions
-            const positions = positionManager.getPositions(message.walletPublicKey);
-            this.sendMessage(ws, {
-              type: 'position_update',
-              data: positions,
-              timestamp: Date.now()
-            });
-          } catch (e: any) {
-            logger.error(`Error verifying subscription: ${e.message}`);
-            this.sendMessage(ws, { type: 'error', data: { message: 'Authentication error' }, timestamp: Date.now() });
+          } 
+          // Auth Method 2: Admin Key (Integrated Mode)
+          else if (message.adminKey) {
+             const config = configUtil.get();
+             const validKey = process.env.ADMIN_API_KEY || config.adminApiKey;
+             
+             // If no key is set anywhere, we allow it (Local mode)
+             if (validKey && message.adminKey !== validKey) {
+                this.sendMessage(ws, { type: 'error', data: { message: 'Invalid Admin Key' }, timestamp: Date.now() });
+                return;
+             }
+          } else {
+             // No auth provided
+             this.sendMessage(ws, { type: 'error', data: { message: 'Missing authentication data' }, timestamp: Date.now() });
+             return;
           }
+
+          client.walletPublicKey = message.walletPublicKey;
+          logger.info(`Client authenticated and subscribed to wallet: ${message.walletPublicKey.slice(0, 8)}...`);
+
+          // Send current positions
+          const positions = positionManager.getPositions(message.walletPublicKey);
+          this.sendMessage(ws, {
+            type: 'position_update',
+            data: positions,
+            timestamp: Date.now()
+          });
         } else {
-          this.sendMessage(ws, { type: 'error', data: { message: 'Missing authentication data' }, timestamp: Date.now() });
+          this.sendMessage(ws, { type: 'error', data: { message: 'Missing wallet public key' }, timestamp: Date.now() });
         }
         break;
 

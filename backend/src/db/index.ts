@@ -5,6 +5,7 @@
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
 import { PGlite } from '@electric-sql/pglite';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
@@ -104,6 +105,34 @@ if (hasDatabaseUrl) {
   };
 
   console.log(`[Database] ✅ Local database active at: ${dataDir}`);
+}
+
+/**
+ * Initialize database (run migrations)
+ */
+export async function initDatabase() {
+  if (hasDatabaseUrl) return; // Skip for remote DB (assumed managed externally or via cli)
+
+  console.log('[Database] Checking migrations...');
+  try {
+    // In production (dist), drizzle folder is at ../drizzle relative to this file
+    // In dev (src), it is at ../../drizzle
+    let migrationsFolder = path.join(__dirname, '../../drizzle');
+    if (!fs.existsSync(migrationsFolder)) {
+       // Try dist path
+       migrationsFolder = path.join(__dirname, '../drizzle');
+    }
+
+    if (fs.existsSync(migrationsFolder)) {
+      await migrate(db, { migrationsFolder });
+      console.log('[Database] ✅ Migrations applied successfully');
+    } else {
+      console.warn('[Database] ⚠️  Migrations folder not found at:', migrationsFolder);
+    }
+  } catch (error) {
+    console.error('[Database] ❌ Migration failed:', error);
+    // Don't exit, try to continue
+  }
 }
 
 // Export pool and db
