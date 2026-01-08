@@ -21,12 +21,15 @@ interface Client {
   subscriptions: Set<string>; // Token mints to watch
 }
 
+export let wsManagerInstance: WebSocketManager | null = null;
+
 export class WebSocketManager {
   private wss: WebSocketServer;
   private clients: Map<WebSocket, Client> = new Map();
   private priceUpdateInterval?: NodeJS.Timeout;
 
   constructor(server: HTTPServer) {
+    wsManagerInstance = this;
     this.wss = new WebSocketServer({ server, path: '/ws' });
     this.setupWebSocket();
     this.startPriceUpdates();

@@ -15,6 +15,8 @@ import { pendingSellsManager } from '../core/pending-sells-manager';
 import { dcaExecutor } from '../services/dca-executor';
 import { jupiterService } from '../services/jupiter.service';
 import { priceService } from '../services/price.service';
+import { WebSocketManager, wsManagerInstance } from './websocket-server';
+import { limitOrderExecutor } from '../services/limit-order-executor';
 import { taxService } from '../services/tax.service';
 import { getConnection, getSOLBalance, isValidPublicKey, getWalletKeypair } from '../utils/blockchain.util';
 import { loadEncryptedWallet, decrypt } from '../utils/security.util';
@@ -562,6 +564,16 @@ app.post('/api/bot/exit', authenticateAdmin, async (req: Request, res: Response)
       await positionManager.closePosition(walletPublicKey, tokenMint);
     } else {
       await positionManager.incrementExitStage(walletPublicKey, tokenMint);
+    }
+
+    // Notify WebSocket clients immediately
+    if (wsManagerInstance) {
+      const positions = positionManager.getPositions(walletPublicKey);
+      wsManagerInstance.broadcastToWallet(walletPublicKey, {
+        type: 'position_update',
+        data: positions,
+        timestamp: Date.now()
+      });
     }
 
     const expectedOutput = Number(quote.outAmount) / 1e9;
