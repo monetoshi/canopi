@@ -657,6 +657,80 @@ app.post('/api/bot/exit', authenticateAdmin, async (req: Request, res: Response)
 });
 
 /**
+ * Recover Funds from Ephemeral Wallets
+ */
+app.post('/api/wallet/recover-ephemeral', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ success: false, error: 'Password required' });
+
+    const mainWallet = getWalletKeypair();
+    if (!mainWallet) return res.status(400).json({ success: false, error: 'Main wallet not configured' });
+
+    const publicKeys = ephemeralWalletManager.getAllPublicKeys();
+    let recoveredCount = 0;
+    let recoveredAmount = 0;
+    const errors = [];
+
+    const { SystemProgram, Transaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
+
+    logger.info(`[Recovery] Scanning ${publicKeys.length} ephemeral wallets...`);
+
+    for (const pubKey of publicKeys) {
+      try {
+        // 1. Check balance
+        const balance = await getSOLBalance(connection, pubKey);
+        
+        // 2. If > 0.005 SOL, sweep
+        if (balance > 0.005) {
+           const wallet = ephemeralWalletManager.getWallet(pubKey, password);
+           if (!wallet) {
+             errors.push(`Failed to decrypt ${pubKey}`);
+             continue;
+           }
+
+           const transferAmount = Math.floor((balance - 0.002) * LAMPORTS_PER_SOL); // Leave 0.002 for gas
+           
+           if (transferAmount > 0) {
+             const transaction = new Transaction().add(
+               SystemProgram.transfer({
+                 fromPubkey: wallet.publicKey,
+                 toPubkey: mainWallet.publicKey,
+                 lamports: transferAmount,
+               })
+             );
+
+             const sig = await connection.sendTransaction(transaction, [wallet]);
+             logger.info(`[Recovery] Swept ${balance} SOL from ${pubKey} to main wallet. Sig: ${sig}`);
+             
+             recoveredCount++;
+             recoveredAmount += (balance - 0.002);
+             
+             ephemeralWalletManager.markDrained(pubKey);
+           }
+        }
+      } catch (e: any) {
+        logger.error(`[Recovery] Error processing ${pubKey}: ${e.message}`);
+        errors.push(`${pubKey}: ${e.message}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        scanned: publicKeys.length,
+        recoveredCount,
+        recoveredAmount,
+        errors
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * Health check endpoint
  */
 app.get('/api/health', (req: Request, res: Response) => {

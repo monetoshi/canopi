@@ -9,8 +9,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { encrypt, decrypt, EncryptedData } from '../utils/security.util';
 import { logger } from '../utils/logger.util';
+import { getDataDir } from '../utils/paths.util';
 
-const KEYS_FILE = path.join(__dirname, '../../data/ephemeral-keys.enc.json');
+const KEYS_FILE = path.join(getDataDir(), 'ephemeral-keys.enc.json');
 
 export interface EphemeralKeyRecord {
   publicKey: string;
@@ -110,6 +111,13 @@ export class EphemeralWalletManager {
    */
   public isEphemeral(publicKey: string): boolean {
     return this.keys.has(publicKey);
+  }
+
+  /**
+   * Get all wallet public keys
+   */
+  public getAllPublicKeys(): string[] {
+    return Array.from(this.keys.keys());
   }
 }
 

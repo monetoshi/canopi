@@ -9,6 +9,7 @@ import CreateWalletModal from './CreateWalletModal';
 import UnlockWalletModal from './UnlockWalletModal';
 import ExportWalletModal from './ExportWalletModal';
 import WithdrawModal from './WithdrawModal';
+import RecoveryModal from './RecoveryModal';
 
 interface WalletStatusCardProps {
   balance: WalletBalance | null;
@@ -35,6 +36,7 @@ export default function WalletStatusCard({
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Check for locked status when botStatus updates
@@ -95,6 +97,12 @@ export default function WalletStatusCard({
           onClose={() => setShowWithdrawModal(false)}
           onSuccess={onStatusChange}
           maxAmount={botStatus.balance}
+        />
+      )}
+      {showRecoveryModal && (
+        <RecoveryModal 
+          onClose={() => setShowRecoveryModal(false)}
+          onSuccess={onStatusChange}
         />
       )}
       <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-gray-800">
@@ -234,6 +242,14 @@ export default function WalletStatusCard({
                       Export Key
                     </button>
                   </div>
+                  
+                  <button 
+                    onClick={() => setShowRecoveryModal(true)}
+                    className="w-full mt-2 py-1 text-xs text-yellow-500/70 hover:text-yellow-400 hover:underline flex items-center justify-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Recover Stuck Funds
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3 animate-fadeIn">
