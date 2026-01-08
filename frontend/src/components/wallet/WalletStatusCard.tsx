@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus, Lock, Key, ArrowUpRight, Download } from 'lucide-react';
+import { Wallet, RefreshCw, Bot, Smartphone, LogOut, Plus, Lock, Key, ArrowUpRight, Download, Copy, Check } from 'lucide-react';
 import type { WalletBalance, BotStatus } from '@/types';
 import { getBotStatus, api } from '@/lib/api';
 import CreateWalletModal from './CreateWalletModal';
@@ -35,6 +35,7 @@ export default function WalletStatusCard({
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Check for locked status when botStatus updates
   useEffect(() => {
@@ -42,6 +43,13 @@ export default function WalletStatusCard({
       setShowUnlockModal(true);
     }
   }, [botStatus?.isLocked]);
+
+  const handleCopyAddress = (address: string) => {
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    setCopiedAddress(true);
+    setTimeout(() => setCopiedAddress(false), 2000);
+  };
 
   const handleWalletCreated = () => {
     setShowCreateModal(false);
@@ -134,9 +142,18 @@ export default function WalletStatusCard({
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-sm text-gray-400">Address</p>
-                      <p className="text-sm font-mono text-white">
-                        {balance.publicKey.slice(0, 8)}...{balance.publicKey.slice(-8)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-mono text-white">
+                          {balance.publicKey.slice(0, 8)}...{balance.publicKey.slice(-8)}
+                        </p>
+                        <button
+                          onClick={() => handleCopyAddress(balance.publicKey)}
+                          className="text-gray-500 hover:text-white transition-colors"
+                          title="Copy Address"
+                        >
+                          {copiedAddress ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
                     </div>
                     <button
                       onClick={() => disconnect()}
@@ -183,9 +200,18 @@ export default function WalletStatusCard({
                       Bot Address
                       <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">ACTIVE</span>
                     </p>
-                    <p className="text-sm font-mono text-white">
-                      {botStatus.publicKey?.slice(0, 8)}...{botStatus.publicKey?.slice(-8)}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-mono text-white">
+                        {botStatus.publicKey?.slice(0, 8)}...{botStatus.publicKey?.slice(-8)}
+                      </p>
+                      <button
+                        onClick={() => handleCopyAddress(botStatus.publicKey || '')}
+                        className="text-gray-500 hover:text-white transition-colors"
+                        title="Copy Address"
+                      >
+                        {copiedAddress ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-400">Bot Balance</p>
