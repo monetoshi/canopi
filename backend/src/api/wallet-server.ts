@@ -670,7 +670,8 @@ app.post('/api/wallet/recover-ephemeral', authenticateAdmin, async (req: Request
     const publicKeys = ephemeralWalletManager.getAllPublicKeys();
     let recoveredCount = 0;
     let recoveredAmount = 0;
-    const errors = [];
+    const errors: string[] = [];
+    const details: any[] = [];
 
     const { SystemProgram, Transaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 
@@ -681,6 +682,8 @@ app.post('/api/wallet/recover-ephemeral', authenticateAdmin, async (req: Request
         // 1. Check balance
         const balance = await getSOLBalance(connection, pubKey);
         
+        details.push({ pubKey, balance });
+
         // 2. If > 0.005 SOL, sweep
         if (balance > 0.005) {
            const wallet = ephemeralWalletManager.getWallet(pubKey, password);
@@ -721,7 +724,8 @@ app.post('/api/wallet/recover-ephemeral', authenticateAdmin, async (req: Request
         scanned: publicKeys.length,
         recoveredCount,
         recoveredAmount,
-        errors
+        errors,
+        details // Include details for debugging
       }
     });
 

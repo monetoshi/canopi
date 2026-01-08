@@ -7,10 +7,18 @@ interface RecoveryModalProps {
   onSuccess: () => void;
 }
 
+interface RecoveryResult {
+  scanned: number;
+  recoveredCount: number;
+  recoveredAmount: number;
+  errors: string[];
+  details: { pubKey: string, balance: number }[];
+}
+
 export default function RecoveryModal({ onClose, onSuccess }: RecoveryModalProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ recoveredCount: number, recoveredAmount: number, errors: string[] } | null>(null);
+  const [result, setResult] = useState<RecoveryResult | null>(null);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +69,22 @@ export default function RecoveryModal({ onClose, onSuccess }: RecoveryModalProps
                   <ul className="list-disc pl-4">
                     {result.errors.map((e, i) => <li key={i}>{e}</li>)}
                   </ul>
+                </div>
+              )}
+              
+              {result.details && result.details.length > 0 && (
+                <div className="mt-4 pt-2 border-t border-gray-700">
+                  <p className="text-xs text-gray-500 mb-1">Scanned Wallets:</p>
+                  <div className="max-h-32 overflow-y-auto text-xs font-mono bg-black/30 p-2 rounded">
+                    {result.details.map((d, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span className="text-gray-400">{d.pubKey.slice(0, 8)}...</span>
+                        <span className={d.balance > 0.001 ? "text-emerald-400" : "text-gray-600"}>
+                          {d.balance.toFixed(4)} SOL
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
