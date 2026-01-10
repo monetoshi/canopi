@@ -7,18 +7,21 @@ export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
+  NONE = 4
 }
 
 class Logger {
   private level: LogLevel;
 
-  constructor(level: LogLevel = LogLevel.INFO) {
-    this.level = level;
+  constructor() {
+    const envLevel = process.env.LOG_LEVEL?.toUpperCase();
+    this.level = LogLevel[envLevel as keyof typeof LogLevel] ?? 
+                 (process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO);
   }
 
   private log(level: LogLevel, message: string, ...args: any[]) {
-    if (level < this.level) return;
+    if (this.level === LogLevel.NONE || level < this.level) return;
 
     const timestamp = new Date().toISOString();
     const levelName = LogLevel[level];
@@ -62,6 +65,4 @@ class Logger {
 }
 
 // Export singleton instance
-export const logger = new Logger(
-  process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO
-);
+export const logger = new Logger();

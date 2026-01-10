@@ -27,6 +27,17 @@ import crypto from 'crypto';
 // Load environment variables
 dotenv.config();
 
+// ZERO LOGGING: Override global console methods if LOG_LEVEL is NONE
+if (process.env.LOG_LEVEL?.toUpperCase() === 'NONE') {
+  const noop = () => {};
+  console.log = noop;
+  console.info = noop;
+  console.warn = noop;
+  console.error = noop;
+  process.stdout.write = ((...args: any[]) => true) as any;
+  process.stderr.write = ((...args: any[]) => true) as any;
+}
+
 /**
  * Helper to mask sensitive URLs (removes query parameters)
  */
