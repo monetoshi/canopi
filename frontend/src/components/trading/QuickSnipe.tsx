@@ -498,14 +498,25 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken, activ
                 {strategies[strategy].description}
               </p>
 
-              {strategy === 'manual' ? (
-                <div className="text-xs text-gray-300 space-y-2">
+              {strategies[strategy].details && strategies[strategy].details.length > 0 ? (
+                <div className="mb-3 text-xs text-gray-300 space-y-1.5 p-2 bg-gray-800/50 rounded">
+                  {strategies[strategy].details.map((detail, idx) => (
+                    <p key={idx} className="flex gap-2">
+                      <span className="text-emerald-500/70">•</span>
+                      <span>{detail}</span>
+                    </p>
+                  ))}
+                </div>
+              ) : strategy === 'manual' ? (
+                <div className="text-xs text-gray-300 space-y-2 mb-3">
                   <p className="text-white">• You control all sell decisions</p>
                   <p className="text-white">• Use sell buttons to exit position</p>
                   <p className="text-white">• No automated exits or stop loss</p>
                   <p className="text-white">• Monitor and sell at your discretion</p>
                 </div>
-              ) : (
+              ) : null}
+
+              {strategy !== 'manual' && (
                 <>
                   <div className="space-y-1 text-xs text-gray-300">
                     <p className="font-semibold text-gray-200 mb-1">Exit Stages:</p>

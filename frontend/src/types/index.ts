@@ -32,6 +32,7 @@ export interface StrategyConfig {
   stopLossPercent: number;
   isPercentageBased: boolean;
   description: string;
+  details: string[];
 }
 
 export interface Position {

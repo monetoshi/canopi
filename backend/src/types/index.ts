@@ -72,6 +72,8 @@ export interface StrategyConfig {
   isPercentageBased: boolean;
   /** Human-readable description */
   description: string;
+  /** Detailed explanation of how the strategy works */
+  details: string[];
 }
 
 /**

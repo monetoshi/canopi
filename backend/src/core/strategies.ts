@@ -33,7 +33,13 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 999999999,  // Effectively unlimited
     stopLossPercent: -100,   // No automatic stop loss
     isPercentageBased: false,
-    description: '🎮 MANUAL: Full manual control - you decide when to sell'
+    description: '🎮 MANUAL: Full manual control - you decide when to sell',
+    details: [
+      'You are in full control of the exit.',
+      'No automatic sell orders will be triggered.',
+      'No stop loss is applied by the bot.',
+      'Ideal for experienced traders monitoring the chart live.'
+    ]
   },
 
   /**
@@ -52,7 +58,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 10,         // Force sell everything at 10 minutes
     stopLossPercent: -20,    // Stop loss at -20%
     isPercentageBased: false,
-    description: '⚡ AGGRESSIVE: Fast exits for volatile plays (8min max)'
+    description: '⚡ AGGRESSIVE: Fast exits for volatile plays (8min max)',
+    details: [
+      'Best for highly volatile memecoins and "degen" plays.',
+      'Very short hold time: Force sells everything at 10 minutes.',
+      'Exits 40% quickly (2 mins) if +30% profit to secure initial investment.',
+      'Takes more profit at 5 mins (+60%) and 8 mins (+100%).',
+      'Tight stop loss at -20% to prevent bag holding.'
+    ]
   },
 
   /**
@@ -72,7 +85,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 25,         // Force sell at 25 minutes
     stopLossPercent: -30,    // Stop loss at -30%
     isPercentageBased: false,
-    description: '⚖️ MODERATE: Balanced exits for mid-cap plays (20min max)'
+    description: '⚖️ MODERATE: Balanced exits for mid-cap plays (20min max)',
+    details: [
+      'Balanced approach suitable for most mid-cap tokens.',
+      '25 minute maximum hold time before forced exit.',
+      'Takes 25% profit at intervals (5, 10, 15, 20 mins) as price rises.',
+      'Profit targets scale from +50% to +300%.',
+      'Stop loss at -30% allows for some normal volatility.'
+    ]
   },
 
   /**
@@ -96,7 +116,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 60,         // Force sell at 60 minutes
     stopLossPercent: -35,    // Stop loss at -35%
     isPercentageBased: false,
-    description: '🐢 SLOW: Patient exits for trend following (50min max)'
+    description: '🐢 SLOW: Patient exits for trend following (50min max)',
+    details: [
+      'Patient strategy for tokens with establishing trends.',
+      'Longer hold time (1 hour max) allows chart patterns to play out.',
+      'Takes small profits (10-15%) consistently over 50 minutes.',
+      'Aims for higher total returns up to +500%.',
+      'Stop loss at -35% gives room for deeper retracements.'
+    ]
   },
 
   /**
@@ -116,7 +143,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 4320,       // 3 days max (in minutes)
     stopLossPercent: -35,    // Stop loss at -35%
     isPercentageBased: true, // Percentage-based, not time-based
-    description: '💎 HODL 1: Percentage-based for DeFi protocols (hours-days)'
+    description: '💎 HODL 1: Percentage-based for DeFi protocols (hours-days)',
+    details: [
+      'Short-term HODL strategy for DeFi protocols and farms.',
+      'Price targets trigger sells, not time (Percentage-based).',
+      'Max hold time of 3 days.',
+      'Secures profits at +30%, +75%, +150%, and +300%.',
+      'Standard -35% stop loss.'
+    ]
   },
 
   /**
@@ -137,7 +171,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 10080,      // 7 days max (in minutes)
     stopLossPercent: -40,    // Stop loss at -40%
     isPercentageBased: true, // Percentage-based, not time-based
-    description: '💎 HODL 2: Percentage-based for utility tokens (days-weeks)'
+    description: '💎 HODL 2: Percentage-based for utility tokens (days-weeks)',
+    details: [
+      'Medium-term HODL for utility tokens with fundamentals.',
+      'Percentage-based exits: no time pressure.',
+      'Max hold time of 7 days (1 week).',
+      'Aims for significant gains: sells 20% at intervals up to +800%.',
+      'Wider stop loss (-40%) to handle weekly volatility.'
+    ]
   },
 
   /**
@@ -160,7 +201,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 43200,      // 30 days max (in minutes)
     stopLossPercent: -50,    // Stop loss at -50%
     isPercentageBased: true, // Percentage-based, not time-based
-    description: '💎 HODL 3: Diamond hands for moon shots (weeks-months)'
+    description: '💎 HODL 3: Diamond hands for moon shots (weeks-months)',
+    details: [
+      'Long-term "Diamond Hands" strategy for high conviction plays.',
+      'Max hold time of 30 days.',
+      'Targets massive multipliers (up to 100x / +9900%).',
+      'Sells only small portions (10%) at each major milestone.',
+      'Deep stop loss (-50%) to survive major market corrections.'
+    ]
   },
 
   /**
@@ -179,7 +227,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 3,          // Force sell at 3 minutes
     stopLossPercent: -10,    // Tight stop loss at -10%
     isPercentageBased: false,
-    description: '⚡ SCALPING: Ultra-fast 1-3min trades for quick 5-15% gains'
+    description: '⚡ SCALPING: Ultra-fast 1-3min trades for quick 5-15% gains',
+    details: [
+      'Ultra-fast strategy for scraping small profits.',
+      'Max hold time of just 3 minutes.',
+      'Aggressively sells 50% as soon as +5% profit is hit (within 30s).',
+      'Sells remaining position by minute 2 if targets are hit.',
+      'Very tight stop loss (-10%) to cut losses immediately.'
+    ]
   },
 
   /**
@@ -199,7 +254,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 7200,       // 5 days max (in minutes)
     stopLossPercent: -25,    // Stop loss at -25%
     isPercentageBased: true,
-    description: '📊 SWING: Multi-day trend following for 40-200% gains'
+    description: '📊 SWING: Multi-day trend following for 40-200% gains',
+    details: [
+      'Classic swing trading for multi-day trends.',
+      'Max hold time of 5 days.',
+      'Percentage-based exits: waits for price targets.',
+      'Sells 25% chunks at +40%, +80%, +120%, and +200%.',
+      'Moderate stop loss (-25%) for swing lows.'
+    ]
   },
 
   /**
@@ -219,7 +281,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 18,         // Force sell at 18 minutes
     stopLossPercent: -25,    // Stop loss at -25%
     isPercentageBased: false,
-    description: '🚀 BREAKOUT: Volume-based momentum trading for 40-150% gains'
+    description: '🚀 BREAKOUT: Volume-based momentum trading for 40-150% gains',
+    details: [
+      'Designed for catching volume spikes and breakouts.',
+      'Short duration: 18 minutes max hold.',
+      'Takes 30% profit quickly (+40%) within 3 mins to secure the trade.',
+      'Rides the momentum wave to +150% profit.',
+      '-25% stop loss to protect against fake-outs.'
+    ]
   },
 
   /**
@@ -240,7 +309,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 2880,       // 2 days max (in minutes)
     stopLossPercent: -15,    // Tight trailing stop
     isPercentageBased: true,
-    description: '📈 TRAILING: Dynamic stop loss locks in profits while riding trends'
+    description: '📈 TRAILING: Dynamic stop loss locks in profits while riding trends',
+    details: [
+      'Maximizes gains by letting winners run.',
+      'Uses a tight -15% trailing stop loss (dynamic).',
+      'Takes partial profits (20%) at key levels from +25% to +500%.',
+      'Max hold time of 2 days.',
+      'Best for strong uptrends where you want to stay in as long as possible.'
+    ]
   },
 
   /**
@@ -262,7 +338,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 35,         // Force sell at 35 minutes
     stopLossPercent: -20,    // Stop loss at -20%
     isPercentageBased: false,
-    description: '⚙️ GRID: Range trading with multiple 10-30% exits'
+    description: '⚙️ GRID: Range trading with multiple 10-30% exits',
+    details: [
+      'Automated range trading for choppy markets.',
+      'Executes frequent, small sells every 5 minutes.',
+      'Targets consistent small gains (10-40%).',
+      'Max hold time of 35 minutes.',
+      'Stop loss at -20%.'
+    ]
   },
 
   /**
@@ -282,7 +365,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 18,         // Force sell at 18 minutes
     stopLossPercent: -10,    // Very tight stop loss
     isPercentageBased: false,
-    description: '🛡️ CONSERVATIVE: Safe exits with tight -10% stop loss for 10-60% gains'
+    description: '🛡️ CONSERVATIVE: Safe exits with tight -10% stop loss for 10-60% gains',
+    details: [
+      'Focuses on capital preservation and safe gains.',
+      'Very tight stop loss (-10%) to minimize risk.',
+      'Short duration: 18 minutes max.',
+      'Takes profit early: 40% sold at just +10% gain.',
+      'Targets modest returns (up to +60%) rather than moonshots.'
+    ]
   },
 
   /**
@@ -303,7 +393,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 10080,      // 7 days max (in minutes)
     stopLossPercent: -100,   // NO STOP LOSS (can lose everything!)
     isPercentageBased: true,
-    description: '💰 TAKE PROFIT: Profit targets only, NO stop loss - high risk/reward!'
+    description: '💰 TAKE PROFIT: Profit targets only, NO stop loss - high risk/reward!',
+    details: [
+      'High-risk strategy: NO STOP LOSS.',
+      'You will either hit profit targets or potentially lose the entire investment.',
+      'Percentage-based exits up to +500%.',
+      'Max hold time of 7 days.',
+      'Use only for high conviction plays where you accept 100% loss risk.'
+    ]
   },
 
   /**
@@ -324,7 +421,14 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 14400,      // 10 days max (in minutes)
     stopLossPercent: -30,    // Stop loss at -30%
     isPercentageBased: true,
-    description: '💵 DCA: Conservative exits for averaged-in positions (20-150% targets)'
+    description: '💵 DCA: Conservative exits for averaged-in positions (20-150% targets)',
+    details: [
+      'Optimized for positions built via Dollar Cost Averaging.',
+      'Takes profit conservatively to lower the average cost basis.',
+      'Sells in smaller chunks (15-20%) starting at +20%.',
+      'Max hold time of 10 days.',
+      'Stop loss at -30%.'
+    ]
   }
 };
 
