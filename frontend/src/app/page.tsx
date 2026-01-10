@@ -25,6 +25,7 @@ import BackgroundTrees from '@/components/ui/BackgroundTrees';
 import { Drawer, DrawerItem } from '@/components/layout/Drawer';
 import TransactionHistory from '@/components/history/TransactionHistory';
 import TelegramSetup from '@/components/settings/TelegramSetup';
+import TorSwitch from '@/components/settings/TorSwitch';
 
 export default function Home() {
   const { publicKey, connected, signMessage } = useWallet();
@@ -525,6 +526,8 @@ export default function Home() {
         </div>
 
         {/* Settings Footer */}
+        <TorSwitch />
+        
         {activeWalletKey && (
           <TelegramSetup activeWalletKey={activeWalletKey} />
         )}

@@ -34,9 +34,10 @@ import { telegramNotifier } from '../services/telegram-notifier';
 import { db } from '../db/index';
 import { telegramUsers } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { networkService } from '../services/network.service';
 
 const app = express();
-const connection = getConnection();
+let connection = getConnection();
 
 /**
  * Authentication Middleware
@@ -2353,6 +2354,50 @@ app.post('/api/privacy/unshield', authenticateAdmin, async (req: Request, res: R
     
     const result = await privacyService.unshieldFunds(amount);
     res.json({ success: true, data: result, timestamp: Date.now() });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// --- NETWORK SETTINGS (Tor) ---
+
+/**
+ * Get Tor Status
+ */
+app.get('/api/settings/tor', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    data: { enabled: networkService.isTorEnabled },
+    timestamp: Date.now()
+  });
+});
+
+/**
+ * Toggle Tor
+ */
+app.post('/api/settings/tor', async (req: Request, res: Response) => {
+  try {
+    const { enabled } = req.body;
+    const success = await networkService.setTorEnabled(!!enabled);
+    
+    if (success) {
+      // Reload services that depend on agent
+      await telegramNotifier.reload();
+      
+      // Update global connection
+      connection = getConnection();
+      
+      // Reload PrivacyService connection
+      privacyService.reload();
+      
+      logger.info(`[API] Tor mode ${enabled ? 'ENABLED' : 'DISABLED'} - Services reloaded`);
+    }
+
+    res.json({
+      success,
+      data: { enabled: networkService.isTorEnabled },
+      error: !success ? 'Failed to connect to Tor proxy (is it running on port 9050?)' : undefined
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

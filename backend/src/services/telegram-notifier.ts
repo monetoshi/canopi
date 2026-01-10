@@ -11,6 +11,7 @@ import { DCAOrder } from '../types/dca.types';
 import { eq } from 'drizzle-orm';
 import { logger } from '../utils/logger.util';
 import { configUtil } from '../utils/config.util';
+import { networkService } from './network.service';
 
 export class TelegramNotifier {
   private bot: TelegramBot | null = null;
@@ -63,7 +64,17 @@ export class TelegramNotifier {
     }
 
     try {
-      this.bot = new TelegramBot(token, { polling: true });
+      const agent = networkService.getAgent();
+      const options: TelegramBot.ConstructorOptions = { 
+        polling: true
+      };
+
+      if (agent) {
+        options.request = { agent };
+        logger.info('[Telegram] Connecting via Tor proxy');
+      }
+
+      this.bot = new TelegramBot(token, options);
       
       // Fetch bot info
       const me = await this.bot.getMe();

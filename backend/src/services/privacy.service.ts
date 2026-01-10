@@ -18,6 +18,14 @@ export class PrivacyService {
   }
 
   /**
+   * Reload connection (e.g. when network settings change)
+   */
+  reload() {
+    this.connection = getConnection();
+    logger.info('[PrivacyService] Connection reloaded');
+  }
+
+  /**
    * Get shielded balance for a wallet
    */
   async getShieldedBalance(walletAddress: string) {

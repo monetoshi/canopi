@@ -19,13 +19,12 @@ When this is set, the application will not output any text to the terminal or lo
 
 The bot connects to Solana RPC nodes and third-party APIs (Jupiter, Birdeye). To hide your IP address:
 
-1.  **Use a VPN:** Run the bot on a machine with a system-wide VPN enabled.
-2.  **Use Tor (Advanced):** Route the bot's traffic through Tor using `torsocks` or a similar wrapper.
+1.  **Use the Integrated Tor Switch:**
+    *   Ensure Tor is running on your machine (default port `9050`).
+    *   Open the app menu (Drawer) and toggle "Tor Network".
+    *   This routes outgoing requests (Price API, Telegram, Solana RPC) through the Tor network.
 
-```bash
-# Example using torsocks
-torsocks npm run dev
-```
+2.  **Use a VPN (Alternative/Additional):** Run the bot on a machine with a system-wide VPN enabled.
 
 **Note on RPCs:** Ensure your RPC provider (e.g., Helius, QuickNode) supports connections from VPN/Tor exit nodes, or run your own node.
 
@@ -64,7 +63,8 @@ To strictly ensure no permanent record:
 ## Summary Checklist
 
 - [ ] Set `LOG_LEVEL=NONE` in `.env`
-- [ ] Connect via VPN or Tor
+- [ ] Ensure Tor service is running (port 9050)
+- [ ] Toggle "Tor Network" switch in the app menu
 - [ ] Use "Private" toggle for all trades
 - [ ] Ensure `backend/data` is on an encrypted volume
 - [ ] Ensure Telegram tokens are NOT configured

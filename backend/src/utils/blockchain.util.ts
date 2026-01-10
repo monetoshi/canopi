@@ -3,13 +3,14 @@
  * Helper functions for Solana blockchain interactions
  */
 
-import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction, ConnectionConfig } from '@solana/web3.js';
 import bs58 from 'bs58';
 import fs from 'fs';
 import path from 'path';
 import { loadEncryptedWallet, decrypt } from './security.util';
 import { getWalletPath } from './paths.util';
 import * as dotenv from 'dotenv';
+import { networkService } from '../services/network.service';
 
 dotenv.config();
 
@@ -17,7 +18,27 @@ dotenv.config();
  * Initialize Solana connection
  */
 export function getConnection(rpcUrl: string = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com'): Connection {
-  return new Connection(rpcUrl, 'confirmed');
+  const agent = networkService.getAgent();
+  const config: ConnectionConfig = {
+    commitment: 'confirmed'
+  };
+
+  if (agent) {
+    try {
+      // Dynamically require node-fetch to inject the agent
+      // @solana/web3.js typically bundles or depends on node-fetch
+      const nodeFetch = require('node-fetch');
+      config.fetch = (url: any, init: any) => {
+        return nodeFetch(url, { ...init, agent });
+      };
+      // logger might not be available here directly or circular dep, so use console for now (silenced if zero-log)
+      // or just assume networkService logged the switch
+    } catch (e) {
+      console.warn('[Blockchain] Failed to load node-fetch for Tor proxying:', e);
+    }
+  }
+
+  return new Connection(rpcUrl, config);
 }
 
 /**

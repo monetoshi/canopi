@@ -7,6 +7,7 @@ import axios from 'axios';
 import NodeCache from 'node-cache';
 import { PriceData } from '../types';
 import { jupiterService } from './jupiter.service';
+import { networkService } from './network.service';
 
 // Cache with 10 second TTL for fresher prices
 const priceCache = new NodeCache({ stdTTL: 10 });
@@ -131,7 +132,10 @@ export class PriceService {
 
         const response = await axios.get(
           `https://api.dexscreener.com/latest/dex/tokens/${mint}`,
-          { timeout: 5000 }
+          { 
+            timeout: 5000,
+            ...networkService.getAxiosConfig()
+          }
         );
 
         if (response.data?.pairs && response.data.pairs.length > 0) {
