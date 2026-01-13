@@ -61,8 +61,21 @@ backend/*.png
 avi meme.png
 
 # Agent Directory & Scripts
+
 .gemini/
+
 Instructions.md
+
 instructions.md
+
 CLAUDE.md
+
 smart-commit.sh
+
+
+
+# Binaries
+
+bin/
+
+backend/bin/

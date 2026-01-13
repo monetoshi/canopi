@@ -43,6 +43,13 @@
       "when": 1767288348797,
       "tag": "0005_loose_mulholland_black",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1768272161227,
+      "tag": "0006_modern_mac_gargan",
+      "breakpoints": true
     }
   ]
 }

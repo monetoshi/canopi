@@ -37,6 +37,10 @@ export const positions = pgTable('positions', {
   // Status
   status: varchar('status', { length: 20 }).notNull().default('active'), // 'active', 'closing', 'closed'
 
+  // Privacy (ShadowWire Integration)
+  isPrivate: boolean('is_private').default(false),
+  executionWallet: text('execution_wallet'),
+
   // Metadata
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

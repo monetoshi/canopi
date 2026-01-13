@@ -174,7 +174,7 @@ export class LimitOrderExecutor {
     console.log(`[LimitOrderExecutor] Mode: ${order.isPrivate ? '🕵️ STEALTH (Private)' : '📢 PUBLIC'}`);
     
     // Import here to avoid circular dependencies
-    const { getWalletKeypair, getConnection } = require('../utils/blockchain.util');
+    const { getWalletKeypair, getConnection, getTokenDecimals } = require('../utils/blockchain.util');
     const { jupiterService } = require('./jupiter.service');
     const { VersionedTransaction } = require('@solana/web3.js');
     const { positionManager } = require('../core/position-manager');
@@ -260,7 +260,9 @@ export class LimitOrderExecutor {
             }
          }
 
-         amount = Math.floor(position.tokenAmount * 10 ** 6); // Assuming 6 decimals, Todo: fetch real decimals
+         // Fetch real decimals
+         const decimals = await getTokenDecimals(connection, order.tokenMint);
+         amount = Math.floor(position.tokenAmount * 10 ** decimals);
       }
 
       // 1. Get Quote
@@ -298,7 +300,9 @@ export class LimitOrderExecutor {
       // 6. Update Position / Tax
       if (order.type === 'BUY') {
          // Create/Update position
-         const tokenAmount = Number(quote.outAmount) / 1e9; // Approx
+         const decimals = await getTokenDecimals(connection, order.tokenMint);
+         const tokenAmount = Number(quote.outAmount) / 10 ** decimals;
+         
          const position = positionManager.getPosition(order.walletPublicKey, order.tokenMint);
          
          if (position) {

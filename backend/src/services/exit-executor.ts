@@ -8,7 +8,7 @@ import { pendingSellsManager } from '../core/pending-sells-manager';
 import { jupiterService } from './jupiter.service';
 import { Position } from '../types';
 import { PublicKey, VersionedTransaction, Keypair } from '@solana/web3.js';
-import { getWalletKeypair, getConnection } from '../utils/blockchain.util';
+import { getWalletKeypair, getConnection, getTokenDecimals } from '../utils/blockchain.util';
 import { taxService } from './tax.service';
 import { priceService } from './price.service';
 import { privacyService } from './privacy.service';
@@ -97,11 +97,16 @@ export class ExitExecutor {
       const tokenAmount = (position.tokenAmount * sellPercentage) / 100;
       const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
+      // Get decimals
+      const connection = getConnection();
+      const decimals = await getTokenDecimals(connection, position.mint);
+      const amountAtomic = Math.floor(tokenAmount * 10 ** decimals);
+
       // Get Quote
       const quote = await jupiterService.getQuote(
         position.mint,
         SOL_MINT,
-        Math.floor(tokenAmount), // Note: Need to check decimals here properly in real world
+        amountAtomic,
         SLIPPAGE_BPS
       );
 

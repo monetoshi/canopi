@@ -18,7 +18,7 @@ import { priceService } from '../services/price.service';
 import { WebSocketManager, wsManagerInstance } from './websocket-server';
 import { limitOrderExecutor } from '../services/limit-order-executor';
 import { taxService } from '../services/tax.service';
-import { getConnection, getSOLBalance, isValidPublicKey, getWalletKeypair } from '../utils/blockchain.util';
+import { getConnection, getSOLBalance, isValidPublicKey, getWalletKeypair, getTokenDecimals } from '../utils/blockchain.util';
 import { loadEncryptedWallet, decrypt } from '../utils/security.util';
 import { getWalletPath } from '../utils/paths.util';
 import { configUtil } from '../utils/config.util';
@@ -77,6 +77,104 @@ app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
+});
+
+/**
+ * Tor Settings
+ */
+app.get('/api/settings/tor', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      enabled: networkService.isTorEnabled
+    }
+  });
+});
+
+app.post('/api/settings/tor', async (req: Request, res: Response) => {
+  try {
+    const { enabled } = req.body;
+    const success = await networkService.setTorEnabled(!!enabled);
+    
+    if (!success && enabled) {
+        return res.status(500).json({ success: false, error: 'Failed to start Tor proxy' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        enabled: networkService.isTorEnabled
+      }
+    });
+  } catch (error: any) {
+    logger.error('Error toggling Tor:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Privacy Shield Endpoints
+ */
+
+/**
+ * Get Shielded Balance
+ */
+app.get('/api/privacy/status/:walletAddress', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { walletAddress } = req.params;
+    const status = await privacyService.getShieldedBalance(walletAddress);
+    res.json({
+      success: true,
+      data: status
+    });
+  } catch (error: any) {
+    logger.error(`[API] Error getting shielded status: ${error.message}`);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Shield Funds (Deposit to ShadowWire)
+ */
+app.post('/api/privacy/shield', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid amount' });
+    }
+
+    const result = await privacyService.shieldFunds(Number(amount));
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error: any) {
+    logger.error(`[API] Error shielding funds: ${error.message}`);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Unshield Funds (Withdraw from ShadowWire)
+ */
+app.post('/api/privacy/unshield', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid amount' });
+    }
+
+    const result = await privacyService.unshieldFunds(Number(amount));
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error: any) {
+    logger.error(`[API] Error unshielding funds: ${error.message}`);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 /**
@@ -399,7 +497,10 @@ app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response
     // 4. Update Position & Tax
     const entryPrice = await priceService.getCurrentPrice(tokenMint);
     const solPrice = await priceService.getCurrentPrice(SOL_MINT) || 100;
-    const tokenAmount = Number(quote.outAmount) / 1e9; // Todo: precise decimals
+    
+    // Get token decimals
+    const decimals = await getTokenDecimals(connection, tokenMint);
+    const tokenAmount = Number(quote.outAmount) / 10 ** decimals;
     
     // Record Tax
     try {
@@ -520,16 +621,7 @@ app.post('/api/bot/exit', authenticateAdmin, async (req: Request, res: Response)
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
     
     // Get token decimals
-    let decimals = 9; // Default for SOL
-    if (tokenMint !== SOL_MINT) {
-      try {
-        const mintInfo = await getMint(connection, new PublicKey(tokenMint));
-        decimals = mintInfo.decimals;
-      } catch (e) {
-        logger.warn(`[BotExit] Failed to get decimals for ${tokenMint}, assuming 6`);
-        decimals = 6;
-      }
-    }
+    const decimals = await getTokenDecimals(connection, tokenMint);
 
     const amountToSell = position.tokenAmount * (percentage / 100);
     const amountAtomic = Math.floor(amountToSell * Math.pow(10, decimals));
@@ -976,9 +1068,9 @@ app.post('/api/snipe/execute', async (req: Request, res: Response) => {
     let tokenAmount = 0;
     if (expectedOutput) {
       // expectedOutput is in raw token units, need to convert to decimal
-      // Most Solana tokens have 9 decimals
-      tokenAmount = Number(expectedOutput) / 1e9;
-      logger.info(`Using expected output from quote: ${tokenAmount} tokens`);
+      const decimals = await getTokenDecimals(connection, tokenMint);
+      tokenAmount = Number(expectedOutput) / 10 ** decimals;
+      logger.info(`Using expected output from quote: ${tokenAmount} tokens (decimals: ${decimals})`);
     } else if (entryPrice && entryPrice > 0 && solPrice > 0) {
       // Fallback: estimate tokens from SOL spent and prices
       // USD spent = SOL * SOL price

@@ -57,7 +57,8 @@ export class PositionManager {
           status: pos.status as 'active' | 'closing' | 'closed',
           currentPrice: pos.currentPrice ? parseFloat(pos.currentPrice) : undefined,
           currentProfit: pos.currentProfit ? parseFloat(pos.currentProfit) : undefined,
-          // Todo: Add isPrivate/executionWallet to DB schema if needed for full persistence
+          isPrivate: pos.isPrivate || false,
+          executionWallet: pos.executionWallet || undefined
         };
 
         // Update percentage based flag from strategy config
@@ -105,7 +106,9 @@ export class PositionManager {
         highestProfit: position.highestProfit.toString(),
         currentPrice: position.currentPrice?.toString(),
         currentProfit: position.currentProfit?.toString(),
-        exitStagesCompleted: position.exitStagesCompleted
+        exitStagesCompleted: position.exitStagesCompleted,
+        isPrivate: position.isPrivate,
+        executionWallet: position.executionWallet
       };
 
       await db.insert(positionsTable).values(newPosition);

@@ -70,7 +70,7 @@ export class TelegramNotifier {
       };
 
       if (agent) {
-        options.request = { agent };
+        options.request = { agent } as any;
         logger.info('[Telegram] Connecting via Tor proxy');
       }
 

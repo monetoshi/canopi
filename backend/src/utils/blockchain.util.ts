@@ -10,9 +10,14 @@ import path from 'path';
 import { loadEncryptedWallet, decrypt } from './security.util';
 import { getWalletPath } from './paths.util';
 import * as dotenv from 'dotenv';
+import { getMint } from '@solana/spl-token';
 import { networkService } from '../services/network.service';
 
 dotenv.config();
+
+// Cache for token decimals to avoid repeated RPC calls
+const decimalsCache = new Map<string, number>();
+decimalsCache.set('So11111111111111111111111111111111111111112', 9); // Pre-fill SOL
 
 /**
  * Initialize Solana connection
@@ -226,10 +231,37 @@ export function isSOLMint(mint: string): boolean {
 }
 
 /**
- * Get token decimals (common values)
+ * Get token decimals (common values) - Deprecated, use getTokenDecimals
  */
 export function getCommonDecimals(mint: string): number {
   if (isSOLMint(mint)) return 9;
   // Most SPL tokens use 6 or 9 decimals
   return 6;
+}
+
+/**
+ * Get token decimals from chain with caching
+ */
+export async function getTokenDecimals(connection: Connection, mint: string): Promise<number> {
+  // Check cache first
+  if (decimalsCache.has(mint)) {
+    return decimalsCache.get(mint)!;
+  }
+
+  // Handle SOL explicitly (though it's pre-filled)
+  if (isSOLMint(mint)) {
+    return 9;
+  }
+
+  try {
+    const mintInfo = await getMint(connection, new PublicKey(mint));
+    const decimals = mintInfo.decimals;
+    decimalsCache.set(mint, decimals);
+    return decimals;
+  } catch (error) {
+    console.warn(`[Blockchain] Failed to fetch decimals for ${mint}, defaulting to 6:`, error);
+    // Cache the default to avoid retrying failed fetches too often? 
+    // Maybe better not to cache failures in case it was a temporary network issue.
+    return 6; 
+  }
 }

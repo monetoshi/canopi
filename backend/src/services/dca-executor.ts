@@ -8,7 +8,7 @@ import { positionManager } from '../core/position-manager';
 import { DCAOrder, DCABuyExecution } from '../types/dca.types';
 import { Position } from '../types';
 import axios from 'axios';
-import { getWalletKeypair, getConnection } from '../utils/blockchain.util';
+import { getWalletKeypair, getConnection, getTokenDecimals } from '../utils/blockchain.util';
 import { jupiterService } from './jupiter.service';
 import { VersionedTransaction } from '@solana/web3.js';
 import { taxService } from './tax.service';
@@ -207,7 +207,8 @@ export class DCAExecutor {
              console.log(`[DCAExecutor] ✅ Transaction sent: ${signature}`);
              
              // 4. Update State
-             const actualTokenAmount = Number(quote.outAmount) / 10 ** (quote.outputMintDecimals || 9);
+             const decimals = await getTokenDecimals(connection, order.tokenMint);
+             const actualTokenAmount = Number(quote.outAmount) / 10 ** decimals;
              
              // Reuse execution logic
              const key = `${order.id}-${order.currentBuy + 1}`;

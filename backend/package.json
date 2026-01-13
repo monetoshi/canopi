@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:migrate:json": "tsx src/migrations/migrate-from-json.ts"
+    "db:migrate:json": "tsx src/migrations/migrate-from-json.ts",
+    "install:tor": "tsx scripts/setup-tor.ts"
   },
   "keywords": [
     "solana",

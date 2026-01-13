@@ -491,6 +491,10 @@ export default function QuickSnipe({ strategies, onSuccess, selectedToken, activ
               <option value="dca">💵 DCA Exit - Staged selling over time</option>
             </optgroup>
           </select>
+          
+          <p className="text-[10px] text-amber-500 font-semibold mt-1.5 ml-1 flex items-center gap-1 uppercase tracking-wider">
+            ⚠️ Automated exit strategies are experimental
+          </p>
 
           {strategies && strategies[strategy] && (
             <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700">

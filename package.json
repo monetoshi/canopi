@@ -37,7 +37,13 @@
     "mac": {
       "category": "public.app-category.finance",
       "target": "dmg",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "extraResources": [
+        {
+          "from": "backend/bin/tor",
+          "to": "bin/tor"
+        }
+      ]
     }
   }
 }

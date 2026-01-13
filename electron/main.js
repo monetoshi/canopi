@@ -47,7 +47,8 @@ function startBackend() {
     ...process.env, 
     PORT: BACKEND_PORT,
     DATA_DIR: userDataPath,
-    NODE_ENV: isDev ? 'development' : 'production'
+    NODE_ENV: isDev ? 'development' : 'production',
+    RESOURCES_PATH: process.resourcesPath
   };
 
   try {

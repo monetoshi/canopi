@@ -4,6 +4,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
+import { networkService } from './network.service';
 
 // Updated Jupiter API endpoints (October 2025)
 // Old quote-api.jup.ag/v6 was deprecated, now using lite-api.jup.ag/swap/v1 for free tier
@@ -42,7 +43,8 @@ export class JupiterService {
           onlyDirectRoutes: false,
           asLegacyTransaction: false
         },
-        timeout: 10000
+        timeout: 10000,
+        ...networkService.getAxiosConfig()
       });
 
       if (!response.data) {
@@ -86,7 +88,8 @@ export class JupiterService {
           headers: {
             'Content-Type': 'application/json'
           },
-          timeout: 10000
+          timeout: 10000,
+          ...networkService.getAxiosConfig()
         }
       );
 
@@ -156,7 +159,8 @@ export class JupiterService {
       console.log('[Jupiter] Fetching token list');
 
       const response = await axios.get(`https://token.jup.ag/all`, {
-        timeout: 10000
+        timeout: 10000,
+        ...networkService.getAxiosConfig()
       });
 
       if (!response.data) {
