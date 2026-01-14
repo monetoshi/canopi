@@ -1,6 +1,6 @@
 /**
  * Solana Trading Bot - Exit Strategies
- * Defines 6 automated exit strategies with different risk/reward profiles
+ * Defines 15 automated exit strategies with different risk/reward profiles
  */
 
 import { StrategyConfig, ExitStrategy } from '../types';

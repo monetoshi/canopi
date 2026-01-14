@@ -28,7 +28,7 @@ An intelligent trading bot for Solana with 16 automated exit strategies, ZK-Priv
 
 Canopi is not just another sniper bot. It is a **complete portfolio management system** designed for privacy-conscious traders who value risk management over gambling.
 
-**16 Exit Strategies** - From 1-minute scalping to 30-day HODL positions.
+**15 Exit Strategies** - From 1-minute scalping to 30-day HODL positions.
 **Zero-Knowledge Privacy** - Trade without linking your main wallet to your degen plays.
 **Native Desktop App** - A secure, local-first application that keeps your keys on your machine.
 
@@ -51,6 +51,10 @@ Powered by **ShadowWire ZK-Proofs**, Canopi introduces "Stealth Mode" to Solana 
 - **Ephemeral Wallets**: The bot automatically spins up one-time "burner" wallets for trades.
 - **Stealth Limit Orders**: Funds are moved from the shielded pool to a burner wallet *only* when your price target is hit, keeping your intentions hidden until the last second.
 - **Internal Consolidation**: Profits are swept back into the shielded pool via internal transfers.
+
+### Portfolio Tools
+- **Tax Reporting**: Built-in dashboard to view and export your trade history for tax compliance.
+- **Advanced DCA**: dedicated interface to manage, monitor, and adjust your Dollar Cost Averaging positions.
 
 ### User Experience
 - **Native macOS App**: A polished Electron app with a hidden-inset title bar and dark mode.
@@ -118,12 +122,13 @@ Navigate to the **Privacy Shield** card. Enter an amount (e.g., 1 SOL) and click
 ## Roadmap
 
 ### Completed
-- [x] 16 automated exit strategies.
+- [x] 15 automated exit strategies.
 - [x] ZK-Privacy integration (ShadowWire).
 - [x] Stealth Limit Orders and Private DCA.
 - [x] Native macOS App (Electron).
 - [x] Secure Telegram Bot integration.
 - [x] Embedded PGLite database support.
+- [x] Tax Reporting Dashboard.
 
 ### Near-Term
 - [ ] Live OHLCV charts via DexScreener API.
