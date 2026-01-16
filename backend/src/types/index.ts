@@ -74,6 +74,8 @@ export interface StrategyConfig {
   description: string;
   /** Detailed explanation of how the strategy works */
   details: string[];
+  /** Whether to use dynamic trailing stop based on highest profit */
+  useTrailingStop?: boolean;
 }
 
 /**

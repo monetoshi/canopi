@@ -39,7 +39,7 @@ export class PositionManager {
   private async initialize() {
     try {
       const allPositions = await db.select().from(positionsTable);
-      
+
       this.positions.clear();
       for (const pos of allPositions) {
         // Map DB fields to Position type
@@ -73,7 +73,7 @@ export class PositionManager {
         }
         this.positions.get(key)!.push(position);
       }
-      
+
       this.initialized = true;
       console.log(`[PositionManager] Loaded ${allPositions.length} positions from database`);
     } catch (error) {
@@ -181,7 +181,7 @@ export class PositionManager {
           eq(positionsTable.tokenMint, mint),
           eq(positionsTable.status, 'active')
         ));
-        
+
       logger.info(`Added to position: ${mint} - New total: ${totalTokens} tokens, Avg entry: ${newAvgEntryPrice}`);
     } catch (error) {
       console.error('[PositionManager] Error updating position in DB:', error);
@@ -219,21 +219,20 @@ export class PositionManager {
 
     const position = positions.find(p => p.mint === mint && p.status === 'active');
     if (position) {
-      // Update Cache
-      Object.assign(position, updates);
-      console.log(`[PositionManager] Updated position: ${mint} for ${walletPublicKey.slice(0, 8)}...`);
-      
-      // Update DB
-      try {
-        const dbUpdates: any = {};
-        if (updates.status) dbUpdates.status = updates.status;
-        if (updates.currentPrice !== undefined) dbUpdates.currentPrice = updates.currentPrice.toString();
-        if (updates.currentProfit !== undefined) dbUpdates.currentProfit = updates.currentProfit.toString();
-        if (updates.highestProfit !== undefined) dbUpdates.highestProfit = updates.highestProfit.toString();
-        if (updates.exitStagesCompleted !== undefined) dbUpdates.exitStagesCompleted = updates.exitStagesCompleted;
-        if (updates.tokenAmount !== undefined) dbUpdates.tokenAmount = updates.tokenAmount.toString();
-        if (updates.solSpent !== undefined) dbUpdates.solSpent = updates.solSpent.toString();
+      // 1. Prepare DB Updates First
+      const dbUpdates: any = {};
+      if (updates.status) dbUpdates.status = updates.status;
+      if (updates.currentPrice !== undefined) dbUpdates.currentPrice = updates.currentPrice.toString();
+      if (updates.currentProfit !== undefined) dbUpdates.currentProfit = updates.currentProfit.toString();
+      if (updates.highestProfit !== undefined) dbUpdates.highestProfit = updates.highestProfit.toString();
+      if (updates.exitStagesCompleted !== undefined) dbUpdates.exitStagesCompleted = updates.exitStagesCompleted;
+      if (updates.tokenAmount !== undefined) dbUpdates.tokenAmount = updates.tokenAmount.toString();
+      if (updates.solSpent !== undefined) dbUpdates.solSpent = updates.solSpent.toString();
 
+      let dbSuccess = false;
+
+      // 2. Perform DB Update
+      try {
         if (Object.keys(dbUpdates).length > 0) {
           await db.update(positionsTable)
             .set({ ...dbUpdates, updatedAt: new Date() })
@@ -242,12 +241,25 @@ export class PositionManager {
               eq(positionsTable.tokenMint, mint),
               eq(positionsTable.status, 'active') // Only update active record in DB
             ));
+          dbSuccess = true;
+        } else {
+          dbSuccess = true; // No DB updates needed
         }
       } catch (error) {
-        console.error('[PositionManager] Error syncing update to DB:', error);
+        console.error('[PositionManager] ❌ CRITICAL: Error syncing update to DB:', error);
+        // We continue to update Cache so the bot acts correctly, but we must flag this
+        dbSuccess = false;
       }
-      
-      return true;
+
+      // 3. Update Cache (Always, to ensure Bot logic is correct in-memory)
+      Object.assign(position, updates);
+      if (dbSuccess) {
+        console.log(`[PositionManager] Updated position: ${mint} (DB+Cache)`);
+      } else {
+        console.warn(`[PositionManager] Updated position: ${mint} (Cache Only - DB Failed!)`);
+      }
+
+      return dbSuccess;
     }
     return false;
   }
@@ -312,20 +324,17 @@ export class PositionManager {
    */
   async closePosition(walletPublicKey: string, mint: string): Promise<boolean> {
     const success = await this.updatePosition(walletPublicKey, mint, { status: 'closed' });
-    
+
     // Also remove from cache so it doesn't show up in active lists
-    // But keep in DB as history
     if (success) {
-      const positions = this.positions.get(walletPublicKey);
-      if (positions) {
-        const index = positions.findIndex(p => p.mint === mint);
-        if (index !== -1) {
-          // Remove from active cache (since getPosition filters by 'active' anyway, this is just cleanup)
-          // positions.splice(index, 1); 
-          // Actually, let's keep it in cache but marked closed, so UI can show "Recent Closed"
-        }
-      }
+      console.log(`[PositionManager] ✅ Position closed successfully: ${mint}`);
+      // Only remove if DB update was successful?? 
+      // No, if DB failed, we still want it "closed" in memory so we don't try to sell again.
+      // But the "Active" UI issue is because DB is not closed.
+    } else {
+      console.error(`[PositionManager] ⚠️ Position closed in memory but DB update failed for ${mint}. UI may still show active.`);
     }
+
     return success;
   }
 
@@ -339,7 +348,7 @@ export class PositionManager {
     const index = positions.findIndex(p => p.mint === mint);
     if (index !== -1) {
       positions.splice(index, 1);
-      
+
       try {
         await db.delete(positionsTable)
           .where(and(
@@ -350,7 +359,7 @@ export class PositionManager {
       } catch (error) {
         console.error('[PositionManager] Error removing from DB:', error);
       }
-      
+
       return true;
     }
     return false;
@@ -379,12 +388,36 @@ export class PositionManager {
     }
 
     // Check stop loss
-    if (currentProfit <= strategy.stopLossPercent) {
-      return {
-        shouldExit: true,
-        percentage: 100,
-        reason: `Stop loss triggered at ${currentProfit.toFixed(2)}%`
-      };
+    // If Trailing Stop is enabled
+    if (strategy.useTrailingStop) {
+      // Calculate deviation from highest profit
+      // deviation = highestProfit - currentProfit
+      // allowedDeviation = abs(stopLossPercent)
+      const deviation = (position.highestProfit || 0) - currentProfit;
+      const allowedDeviation = Math.abs(strategy.stopLossPercent);
+
+      // Only trigger if we are "in profit" or at least established a high? 
+      // Actually standard trailing stop starts from entry.
+      // If highestProfit is 0 (start), and current is -5, deviation is 5.
+      // If allowed is 15, we are safe.
+      // If highestProfit is 50, and current is 30, deviation is 20 > 15 -> EXIT.
+
+      if (deviation >= allowedDeviation) {
+        return {
+          shouldExit: true,
+          percentage: 100,
+          reason: `Trailing Stop triggered: Dropped ${deviation.toFixed(2)}% from peak`
+        };
+      }
+    } else {
+      // Standard Fixed Stop Loss
+      if (currentProfit <= strategy.stopLossPercent) {
+        return {
+          shouldExit: true,
+          percentage: 100,
+          reason: `Stop loss triggered at ${currentProfit.toFixed(2)}%`
+        };
+      }
     }
 
     // Check max hold time
@@ -436,11 +469,11 @@ export class PositionManager {
     if (!position) return false;
 
     position.exitStagesCompleted++;
-    
+
     // Update DB
     try {
       await db.update(positionsTable)
-        .set({ 
+        .set({
           exitStagesCompleted: position.exitStagesCompleted,
           updatedAt: new Date()
         })
@@ -449,12 +482,12 @@ export class PositionManager {
           eq(positionsTable.tokenMint, mint),
           eq(positionsTable.status, 'active')
         ));
-        
+
       console.log(`[PositionManager] Position ${mint} completed stage ${position.exitStagesCompleted}`);
     } catch (error) {
       console.error('[PositionManager] Error updating exit stage in DB:', error);
     }
-    
+
     return true;
   }
 
@@ -474,7 +507,7 @@ export class PositionManager {
     const closedCount = closedPositions.length;
 
     const totalInvested = allPositions.reduce((sum, p) => sum + p.solSpent, 0);
-    
+
     // Simple average of held time for closed positions in memory
     const avgHoldTime = closedPositions
       .reduce((sum, p) => sum + (Date.now() - p.entryTime), 0) / (closedCount || 1);

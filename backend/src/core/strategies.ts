@@ -56,7 +56,7 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
       { timeMinutes: 8, sellPercent: 20, minProfitPercent: 100 },  // Sell 20% at 8min if +100%
     ],
     maxHoldTime: 10,         // Force sell everything at 10 minutes
-    stopLossPercent: -20,    // Stop loss at -20%
+    stopLossPercent: -100,   // Stop loss disabled (was -20%)
     isPercentageBased: false,
     description: '⚡ AGGRESSIVE: Fast exits for volatile plays (8min max)',
     details: [

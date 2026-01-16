@@ -3,7 +3,7 @@
  * Handles all bot interactions and pushes notifications to users
  */
 
-import TelegramBot from 'node-telegram-bot-api';
+import TelegramBot, { Message, CallbackQuery, ConstructorOptions } from 'node-telegram-bot-api';
 import { db } from '../db/index';
 import { telegramUsers, Trade } from '../db/schema';
 import { Position } from '../types';
@@ -75,7 +75,7 @@ export class TelegramNotifier {
 
     try {
       const agent = networkService.getAgent();
-      const options: TelegramBot.ConstructorOptions = {
+      const options: ConstructorOptions = {
         polling: true
       };
 
@@ -119,7 +119,7 @@ export class TelegramNotifier {
     if (!this.bot) return;
 
     // /start command - Link wallet to Telegram
-    this.bot.onText(/\/start (.+)/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
+    this.bot.onText(/\/start (.+)/, async (msg: Message, match: RegExpExecArray | null) => {
       const chatId = msg.chat.id.toString();
       const input = match?.[1]; // This is now the link code
       const username = msg.from?.username || msg.from?.first_name || 'User';
@@ -180,7 +180,7 @@ export class TelegramNotifier {
     });
 
     // /help command
-    this.bot.onText(/\/help/, (msg: TelegramBot.Message) => {
+    this.bot.onText(/\/help/, (msg: Message) => {
       const chatId = msg.chat.id.toString();
       this.bot?.sendMessage(chatId,
         `🤖 <b>Canopi Bot Help</b>\n\n` +
@@ -194,13 +194,13 @@ export class TelegramNotifier {
     });
 
     // /status command
-    this.bot.onText(/\/status/, (msg: TelegramBot.Message) => {
+    this.bot.onText(/\/status/, (msg: Message) => {
       const chatId = msg.chat.id.toString();
       this.bot?.sendMessage(chatId, '🟢 <b>Canopi Bot Status: Healthy</b>', { parse_mode: 'HTML' });
     });
 
     // /settings command
-    this.bot.onText(/\/settings/, async (msg: TelegramBot.Message) => {
+    this.bot.onText(/\/settings/, async (msg: Message) => {
       const chatId = msg.chat.id.toString();
       const user = await this.getUserByChatId(chatId);
 
@@ -213,7 +213,7 @@ export class TelegramNotifier {
     });
 
     // /stop command (Unlink)
-    this.bot.onText(/\/stop/, async (msg: TelegramBot.Message) => {
+    this.bot.onText(/\/stop/, async (msg: Message) => {
       const chatId = msg.chat.id.toString();
       const user = await this.getUserByChatId(chatId);
 
@@ -233,7 +233,7 @@ export class TelegramNotifier {
     });
 
     // Handle callback queries (Settings toggles)
-    this.bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
+    this.bot.on('callback_query', async (query: CallbackQuery) => {
       if (!query.message || !query.data) return;
       const chatId = query.message.chat.id.toString();
       const action = query.data;
