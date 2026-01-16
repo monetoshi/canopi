@@ -13,6 +13,8 @@ import { logger } from '../utils/logger.util';
 import { configUtil } from '../utils/config.util';
 import { networkService } from './network.service';
 
+import { encryptionService } from './encryption.service';
+
 export class TelegramNotifier {
   private bot: TelegramBot | null = null;
   private isInitialized = false;
@@ -21,7 +23,7 @@ export class TelegramNotifier {
 
   constructor() {
     this.initialize();
-    
+
     // Clean up expired codes every hour
     setInterval(() => {
       const now = Date.now();
@@ -37,7 +39,7 @@ export class TelegramNotifier {
   public generateLinkCode(walletPublicKey: string): string {
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Store with 10-minute expiration
     this.linkCodes.set(code, {
       wallet: walletPublicKey,
@@ -51,21 +53,29 @@ export class TelegramNotifier {
    * Initialize the Telegram Bot
    */
   private async initialize() {
+    // If encryption service isn't ready (wallet locked), we can't decrypt config or user data
+    // So we can try to start if token is in env (dev), otherwise wait.
     let token = process.env.TELEGRAM_BOT_TOKEN;
-    
+
     if (!token) {
+      // Accessing config might return empty if locked
       const config = configUtil.get();
       token = config.telegramBotToken;
     }
 
     if (!token) {
-      logger.warn('[Telegram] TELEGRAM_BOT_TOKEN not found - notifications disabled');
+      if (encryptionService.isReady()) {
+        logger.warn('[Telegram] TELEGRAM_BOT_TOKEN not found - notifications disabled');
+      } else {
+        // This is expected when locked
+        logger.info('[Telegram] Waiting for wallet unlock to load encrypted configuration');
+      }
       return;
     }
 
     try {
       const agent = networkService.getAgent();
-      const options: TelegramBot.ConstructorOptions = { 
+      const options: TelegramBot.ConstructorOptions = {
         polling: true
       };
 
@@ -75,7 +85,7 @@ export class TelegramNotifier {
       }
 
       this.bot = new TelegramBot(token, options);
-      
+
       // Fetch bot info
       const me = await this.bot.getMe();
       this.botUsername = me.username || null;
@@ -94,7 +104,9 @@ export class TelegramNotifier {
    */
   public async reload() {
     if (this.bot) {
-      await this.bot.stopPolling();
+      try {
+        await this.bot.stopPolling();
+      } catch (e) { /* ignore */ }
       this.bot = null;
     }
     await this.initialize();
@@ -107,7 +119,7 @@ export class TelegramNotifier {
     if (!this.bot) return;
 
     // /start command - Link wallet to Telegram
-    this.bot.onText(/\/start (.+)/, async (msg, match) => {
+    this.bot.onText(/\/start (.+)/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
       const chatId = msg.chat.id.toString();
       const input = match?.[1]; // This is now the link code
       const username = msg.from?.username || msg.from?.first_name || 'User';
@@ -119,7 +131,7 @@ export class TelegramNotifier {
 
       // Check if input is a valid link code
       const linkData = this.linkCodes.get(input);
-      
+
       // Validation: Must exist and not be expired
       if (!linkData || linkData.expires < Date.now()) {
         this.bot?.sendMessage(chatId, '❌ Invalid or expired link code. Please generate a new one from the dashboard.');
@@ -127,31 +139,40 @@ export class TelegramNotifier {
       }
 
       const walletPublicKey = linkData.wallet;
-      
+
       // Remove code after use (one-time use)
       this.linkCodes.delete(input);
 
+      if (!encryptionService.isReady()) {
+        this.bot?.sendMessage(chatId, '❌ Wallet is locked. Please unlock the desktop app first.');
+        return;
+      }
+
       try {
+        // Encrypt sensitive fields
+        const encryptedChatId = encryptionService.stringify(encryptionService.encrypt(chatId));
+        const encryptedUsername = encryptionService.stringify(encryptionService.encrypt(username));
+
         // Link wallet to chat ID
         await db.insert(telegramUsers).values({
           walletPublicKey,
-          chatId,
-          username,
+          chatId: encryptedChatId,
+          username: encryptedUsername,
           updatedAt: new Date()
         }).onConflictDoUpdate({
           target: telegramUsers.walletPublicKey,
-          set: { chatId, username, updatedAt: new Date() }
+          set: { chatId: encryptedChatId, username: encryptedUsername, updatedAt: new Date() }
         });
 
-        this.bot?.sendMessage(chatId, 
+        this.bot?.sendMessage(chatId,
           `✅ <b>Wallet Linked Successfully!</b>\n\n` +
           `Hello ${username},\n` +
           `Your wallet <code>${walletPublicKey.slice(0, 8)}...</code> is now linked to this Telegram account.\n\n` +
           `You will receive real-time notifications for your trades, DCA buys, and automated exits.`,
           { parse_mode: 'HTML' }
         );
-        
-        logger.info(`[Telegram] Linked wallet ${walletPublicKey.slice(0, 8)} to chat ${chatId} using code`);
+
+        logger.info(`[Telegram] Linked wallet ${walletPublicKey.slice(0, 8)} to Telegram user`);
       } catch (error: any) {
         logger.error(`[Telegram] Link error: ${error.message}`);
         this.bot?.sendMessage(chatId, '❌ Failed to link wallet. Please try again.');
@@ -159,9 +180,9 @@ export class TelegramNotifier {
     });
 
     // /help command
-    this.bot.onText(/\/help/, (msg) => {
+    this.bot.onText(/\/help/, (msg: TelegramBot.Message) => {
       const chatId = msg.chat.id.toString();
-      this.bot?.sendMessage(chatId, 
+      this.bot?.sendMessage(chatId,
         `🤖 <b>Canopi Bot Help</b>\n\n` +
         `• <b>Linked Wallet:</b> Link via dashboard\n` +
         `• <b>Notifications:</b> Automatic alerts for all trades\n` +
@@ -173,18 +194,18 @@ export class TelegramNotifier {
     });
 
     // /status command
-    this.bot.onText(/\/status/, (msg) => {
+    this.bot.onText(/\/status/, (msg: TelegramBot.Message) => {
       const chatId = msg.chat.id.toString();
       this.bot?.sendMessage(chatId, '🟢 <b>Canopi Bot Status: Healthy</b>', { parse_mode: 'HTML' });
     });
 
     // /settings command
-    this.bot.onText(/\/settings/, async (msg) => {
+    this.bot.onText(/\/settings/, async (msg: TelegramBot.Message) => {
       const chatId = msg.chat.id.toString();
       const user = await this.getUserByChatId(chatId);
 
       if (!user) {
-        this.bot?.sendMessage(chatId, '❌ No wallet linked. Please link your wallet first using the dashboard.');
+        this.bot?.sendMessage(chatId, '❌ No wallet linked or wallet is locked.');
         return;
       }
 
@@ -192,7 +213,7 @@ export class TelegramNotifier {
     });
 
     // /stop command (Unlink)
-    this.bot.onText(/\/stop/, async (msg) => {
+    this.bot.onText(/\/stop/, async (msg: TelegramBot.Message) => {
       const chatId = msg.chat.id.toString();
       const user = await this.getUserByChatId(chatId);
 
@@ -204,7 +225,7 @@ export class TelegramNotifier {
       try {
         await db.delete(telegramUsers).where(eq(telegramUsers.walletPublicKey, user.walletPublicKey));
         this.bot?.sendMessage(chatId, '🚫 <b>Wallet Unlinked</b>\n\nYou will no longer receive notifications.', { parse_mode: 'HTML' });
-        logger.info(`[Telegram] Unlinked wallet ${user.walletPublicKey} from chat ${chatId}`);
+        logger.info(`[Telegram] Unlinked wallet ${user.walletPublicKey}`);
       } catch (e: any) {
         logger.error(`[Telegram] Unlink error: ${e.message}`);
         this.bot?.sendMessage(chatId, '❌ Failed to unlink wallet.');
@@ -212,14 +233,14 @@ export class TelegramNotifier {
     });
 
     // Handle callback queries (Settings toggles)
-    this.bot.on('callback_query', async (query) => {
+    this.bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
       if (!query.message || !query.data) return;
       const chatId = query.message.chat.id.toString();
       const action = query.data;
 
       const user = await this.getUserByChatId(chatId);
       if (!user) {
-        this.bot?.answerCallbackQuery(query.id, { text: 'No wallet linked' });
+        this.bot?.answerCallbackQuery(query.id, { text: 'No wallet linked or locked' });
         return;
       }
 
@@ -250,9 +271,9 @@ export class TelegramNotifier {
           await db.update(telegramUsers)
             .set({ ...updateData, updatedAt: new Date() })
             .where(eq(telegramUsers.walletPublicKey, user.walletPublicKey));
-          
+
           const updatedUser = { ...user, ...updateData };
-          
+
           await this.bot?.answerCallbackQuery(query.id, { text });
           await this.sendSettingsMenu(chatId, updatedUser, query.message.message_id);
         }
@@ -268,7 +289,7 @@ export class TelegramNotifier {
    */
   private async sendSettingsMenu(chatId: string, user: any, messageId?: number) {
     const getStatus = (val: boolean | null) => val ? '✅ ON' : '❌ OFF';
-    
+
     const keyboard = {
       inline_keyboard: [
         [
@@ -301,20 +322,51 @@ export class TelegramNotifier {
     }
   }
 
+  // Helper to decrypt user
+  private decryptUser(user: typeof telegramUsers.$inferSelect) {
+    if (!user) return null;
+    try {
+      if (!encryptionService.isReady()) return null;
+
+      const parsedChatId = encryptionService.parse(user.chatId);
+      const parsedUsername = user.username ? encryptionService.parse(user.username) : null;
+
+      return {
+        ...user,
+        chatId: parsedChatId ? encryptionService.decrypt(parsedChatId) : user.chatId,
+        username: parsedUsername ? encryptionService.decrypt(parsedUsername) : user.username
+      };
+    } catch (e) {
+      // If decryption fails (e.g. old data or corrupt), return raw
+      // This helps with migration or debugging
+      return user;
+    }
+  }
+
   /**
    * Get user by Chat ID
+   * Scans all users and decrypts to find match
    */
   private async getUserByChatId(chatId: string) {
-    const [user] = await db.select().from(telegramUsers).where(eq(telegramUsers.chatId, chatId));
-    return user;
+    if (!encryptionService.isReady()) return null;
+
+    const allUsers = await db.select().from(telegramUsers);
+
+    for (const rawUser of allUsers) {
+      const user = this.decryptUser(rawUser);
+      if (user && user.chatId === chatId) {
+        return user;
+      }
+    }
+    return null;
   }
 
   /**
    * Get user settings
    */
   private async getUser(walletPublicKey: string) {
-    const [user] = await db.select().from(telegramUsers).where(eq(telegramUsers.walletPublicKey, walletPublicKey));
-    return user;
+    const [rawUser] = await db.select().from(telegramUsers).where(eq(telegramUsers.walletPublicKey, walletPublicKey));
+    return this.decryptUser(rawUser);
   }
 
   /**
@@ -329,8 +381,8 @@ export class TelegramNotifier {
     const isBuy = trade.type === 'BUY';
     const typeLabel = isBuy ? '🟢 BUY' : '🔴 SELL';
     const amountLabel = isBuy ? `${parseFloat(trade.solAmount).toFixed(4)} SOL` : `${parseFloat(trade.tokenAmount).toLocaleString()} tokens`;
-    
-    const message = 
+
+    const message =
       `🎯 <b>Trade Executed: ${typeLabel}</b>\n\n` +
       `<b>Token:</b> ${symbol || trade.tokenMint.slice(0, 8)}\n` +
       `<b>Amount:</b> ${amountLabel}\n` +
@@ -354,7 +406,7 @@ export class TelegramNotifier {
     const user = await this.getUser(order.walletPublicKey);
     if (!user || !user.notifyDca) return;
 
-    const message = 
+    const message =
       `💵 <b>DCA Buy Executed (${buyNumber}/${order.numberOfBuys})</b>\n\n` +
       `<b>Token:</b> ${order.tokenSymbol || order.tokenMint.slice(0, 8)}\n` +
       `<b>Bought:</b> ${actualTokens.toLocaleString()} tokens\n` +
@@ -380,8 +432,8 @@ export class TelegramNotifier {
 
     const profit = position.currentProfit || 0;
     const profitLabel = profit >= 0 ? `+${profit.toFixed(2)}%` : `${profit.toFixed(2)}%`;
-    
-    const message = 
+
+    const message =
       `🚨 <b>Exit Triggered: ${position.mint.slice(0, 8)}</b>\n\n` +
       `<b>Reason:</b> ${reason}\n` +
       `<b>Current P&L:</b> ${profitLabel}\n` +
