@@ -236,7 +236,8 @@ export type WebSocketMessageType =
   | 'price_update'
   | 'trade_executed'
   | 'error'
-  | 'connection';
+  | 'connection'
+  | 'wallet_autolocked';
 
 /**
  * WebSocket message

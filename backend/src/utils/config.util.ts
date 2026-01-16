@@ -9,6 +9,10 @@ export interface AppConfig {
   telegramBotToken?: string;
   rpcUrl?: string;
   adminApiKey?: string;
+  autoLock?: {
+    enabled: boolean;
+    durationMinutes: number;
+  };
 }
 
 export const configUtil = {
@@ -23,7 +27,7 @@ export const configUtil = {
     return {};
   },
 
-  set: (key: keyof AppConfig, value: string) => {
+  set: (key: keyof AppConfig, value: any) => {
     const config = configUtil.get();
     config[key] = value;
     try {

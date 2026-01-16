@@ -86,6 +86,8 @@ export default function WalletProvider({ children }: { children: React.ReactNode
   const handleUnlock = () => {
     setIsLocked(false);
     setCheckTrigger(prev => prev + 1); // Force re-check
+    // Dispatch event to notify other components (e.g. dashboard) to refresh immediately
+    window.dispatchEvent(new CustomEvent('bot-unlocked'));
   };
 
   return (

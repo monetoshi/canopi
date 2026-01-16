@@ -50,8 +50,8 @@ export async function getBotStatus(): Promise<BotStatus> {
   try {
     const response = await api.get<ApiResponse<BotStatus>>('/api/bot/status');
     if (!response.data.success || !response.data.data) {
-       // Return default "not configured" state on error
-       return { configured: false, publicKey: null, balance: 0 };
+      // Return default "not configured" state on error
+      return { configured: false, publicKey: null, balance: 0 };
     }
     return response.data.data;
   } catch (error) {
@@ -257,6 +257,35 @@ export async function saveTelegramToken(token: string): Promise<boolean> {
     return response.data.success;
   } catch (error) {
     console.error('Error saving Telegram token:', error);
+    return false;
+  }
+}
+
+/**
+ * Get Auto-Lock Settings
+ */
+export async function getAutoLockSettings(): Promise<{ enabled: boolean; durationMinutes: number }> {
+  try {
+    const response = await api.get<ApiResponse<{ enabled: boolean; durationMinutes: number }>>('/api/settings/autolock');
+    if (!response.data.success || !response.data.data) {
+      return { enabled: true, durationMinutes: 15 };
+    }
+    return response.data.data;
+  } catch (error) {
+    console.error('Error getting auto-lock settings:', error);
+    return { enabled: true, durationMinutes: 15 };
+  }
+}
+
+/**
+ * Set Auto-Lock Settings
+ */
+export async function setAutoLockSettings(enabled: boolean, durationMinutes: number): Promise<boolean> {
+  try {
+    const response = await api.post<ApiResponse>('/api/settings/autolock', { enabled, durationMinutes });
+    return response.data.success;
+  } catch (error) {
+    console.error('Error setting auto-lock settings:', error);
     return false;
   }
 }

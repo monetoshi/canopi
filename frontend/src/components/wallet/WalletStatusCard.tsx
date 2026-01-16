@@ -39,12 +39,7 @@ export default function WalletStatusCard({
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
 
-  // Check for locked status when botStatus updates
-  useEffect(() => {
-    if (botStatus?.isLocked) {
-      setShowUnlockModal(true);
-    }
-  }, [botStatus?.isLocked]);
+
 
   const handleCopyAddress = (address: string) => {
     if (!address) return;

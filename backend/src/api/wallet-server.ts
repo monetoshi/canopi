@@ -35,6 +35,7 @@ import { db } from '../db/index';
 import { telegramUsers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { networkService } from '../services/network.service';
+import { sessionService } from '../services/session.service';
 
 const app = express();
 let connection = getConnection();
@@ -47,7 +48,7 @@ export const authenticateAdmin = (req: Request, res: Response, next: any) => {
   const envKey = process.env.ADMIN_API_KEY;
   const config = require('../utils/config.util').configUtil.get();
   const adminKey = envKey || config.adminApiKey;
-  
+
   // If no admin key is configured, we allow requests (Assume local single-user mode)
   // In a hosted server environment, this would be dangerous, but for a local desktop app
   // it is acceptable default behavior to unblock usage.
@@ -62,7 +63,7 @@ export const authenticateAdmin = (req: Request, res: Response, next: any) => {
   if (!providedKey || providedKey !== adminKey) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
-  
+
   next();
 };
 
@@ -76,6 +77,8 @@ app.use(express.json({ limit: '10mb' }));
 // Request logging middleware
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
+  // Track activity for auto-lock
+  sessionService.touch();
   next();
 });
 
@@ -95,9 +98,9 @@ app.post('/api/settings/tor', async (req: Request, res: Response) => {
   try {
     const { enabled } = req.body;
     const success = await networkService.setTorEnabled(!!enabled);
-    
+
     if (!success && enabled) {
-        return res.status(500).json({ success: false, error: 'Failed to start Tor proxy' });
+      return res.status(500).json({ success: false, error: 'Failed to start Tor proxy' });
     }
 
     res.json({
@@ -108,6 +111,30 @@ app.post('/api/settings/tor', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error('Error toggling Tor:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Auto-Lock Settings
+ */
+app.get('/api/settings/autolock', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    data: sessionService.getSettings()
+  });
+});
+
+app.post('/api/settings/autolock', authenticateAdmin, (req: Request, res: Response) => {
+  try {
+    const { enabled, durationMinutes } = req.body;
+    sessionService.saveSettings(!!enabled, Number(durationMinutes));
+    res.json({
+      success: true,
+      data: sessionService.getSettings()
+    });
+  } catch (error: any) {
+    logger.error('Error saving auto-lock settings:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -144,7 +171,7 @@ app.post('/api/privacy/shield', authenticateAdmin, async (req: Request, res: Res
     }
 
     const result = await privacyService.shieldFunds(Number(amount));
-    
+
     res.json({
       success: true,
       data: result
@@ -166,7 +193,7 @@ app.post('/api/privacy/unshield', authenticateAdmin, async (req: Request, res: R
     }
 
     const result = await privacyService.unshieldFunds(Number(amount));
-    
+
     res.json({
       success: true,
       data: result
@@ -207,13 +234,13 @@ app.post('/api/wallet/setup', async (req: Request, res: Response) => {
 
     // Set env var to unlock immediately
     process.env.WALLET_PASSWORD = password;
-    
+
     logger.info(`✅ New wallet created: ${wallet.publicKey.toString()}`);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Wallet created successfully',
-      publicKey: wallet.publicKey.toString() 
+      publicKey: wallet.publicKey.toString()
     });
 
   } catch (error: any) {
@@ -264,7 +291,7 @@ app.post('/api/wallet/unlock', async (req: Request, res: Response) => {
       // Attempt to decrypt to verify password
       const decryptedKey = decrypt(encryptedData, password);
       if (!decryptedKey) throw new Error('Decryption failed');
-      
+
       // If successful, set env var
       process.env.WALLET_PASSWORD = password;
       logger.info('✅ Wallet unlocked successfully via API');
@@ -302,14 +329,14 @@ app.post('/api/wallet/export', async (req: Request, res: Response) => {
     try {
       const decryptedKey = decrypt(encryptedData, password);
       if (!decryptedKey) throw new Error('Decryption failed');
-      
+
       // If key is array format, convert to base58
       let privateKeyBase58 = decryptedKey;
       if (decryptedKey.startsWith('[') && decryptedKey.endsWith(']')) {
-         const { Keypair } = require('@solana/web3.js');
-         const bs58 = require('bs58');
-         const kp = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
-         privateKeyBase58 = bs58.encode(kp.secretKey);
+        const { Keypair } = require('@solana/web3.js');
+        const bs58 = require('bs58');
+        const kp = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
+        privateKeyBase58 = bs58.encode(kp.secretKey);
       }
 
       res.json({ success: true, privateKey: privateKeyBase58 });
@@ -327,7 +354,7 @@ app.post('/api/wallet/export', async (req: Request, res: Response) => {
 app.post('/api/wallet/withdraw', async (req: Request, res: Response) => {
   try {
     const { password, destination, amount } = req.body;
-    
+
     if (!password || !destination || !amount) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
@@ -338,7 +365,7 @@ app.post('/api/wallet/withdraw', async (req: Request, res: Response) => {
 
     const walletPath = getWalletPath();
     const encryptedData = loadEncryptedWallet(walletPath);
-    
+
     if (!encryptedData) {
       return res.status(404).json({ success: false, error: 'Wallet not found' });
     }
@@ -349,11 +376,11 @@ app.post('/api/wallet/withdraw', async (req: Request, res: Response) => {
       const decryptedKey = decrypt(encryptedData, password);
       const { Keypair } = require('@solana/web3.js');
       const bs58 = require('bs58');
-      
+
       if (decryptedKey.startsWith('[') && decryptedKey.endsWith(']')) {
-         signer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
+        signer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
       } else {
-         signer = Keypair.fromSecretKey(bs58.decode(decryptedKey));
+        signer = Keypair.fromSecretKey(bs58.decode(decryptedKey));
       }
     } catch (error) {
       return res.status(401).json({ success: false, error: 'Invalid password' });
@@ -362,11 +389,11 @@ app.post('/api/wallet/withdraw', async (req: Request, res: Response) => {
     // 2. Prepare Transaction
     const { SystemProgram, Transaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
     const transferAmount = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
-    
+
     // Check balance
     const currentBalance = await connection.getBalance(signer.publicKey);
     if (currentBalance < transferAmount + 5000) { // 5000 lamports for fee
-       return res.status(400).json({ success: false, error: 'Insufficient balance' });
+      return res.status(400).json({ success: false, error: 'Insufficient balance' });
     }
 
     const transaction = new Transaction().add(
@@ -379,9 +406,9 @@ app.post('/api/wallet/withdraw', async (req: Request, res: Response) => {
 
     // 3. Send
     const signature = await connection.sendTransaction(transaction, [signer]);
-    
+
     logger.info(`Withdrawal successful: ${signature}`);
-    
+
     res.json({ success: true, signature });
 
   } catch (error: any) {
@@ -396,17 +423,17 @@ app.post('/api/wallet/withdraw', async (req: Request, res: Response) => {
 app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response) => {
   try {
     const { tokenMint, solAmount, strategy, slippageBps, isPrivate } = req.body;
-    
+
     // 1. Load Server Wallet
     const wallet = getWalletKeypair();
-    
+
     if (!wallet) {
       return res.status(400).json({
         success: false,
         error: 'Server wallet not configured'
       });
     }
-    
+
     const walletPublicKey = wallet.publicKey.toString();
     const existingPosition = positionManager.getPosition(walletPublicKey, tokenMint);
 
@@ -414,26 +441,26 @@ app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response
     let executionKeypair = wallet;
     if (isPrivate) {
       logger.info(`[BotTrade] Initiating PRIVATE trade for ${walletPublicKey.slice(0, 8)}...`);
-      
+
       if (existingPosition && !existingPosition.isPrivate) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Cannot add privately to an existing PUBLIC position. Please exit the current position first.' 
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot add privately to an existing PUBLIC position. Please exit the current position first.'
         });
       }
 
       // Check Shielded Balance
       const shieldStatus = await privacyService.getShieldedBalance(walletPublicKey);
       if (shieldStatus.available < solAmount + 0.01) {
-         return res.status(400).json({ 
-           success: false, 
-           error: `Insufficient shielded balance (${shieldStatus.available.toFixed(4)} SOL). Please shield at least ${(solAmount + 0.01).toFixed(4)} SOL first.` 
-         });
+        return res.status(400).json({
+          success: false,
+          error: `Insufficient shielded balance (${shieldStatus.available.toFixed(4)} SOL). Please shield at least ${(solAmount + 0.01).toFixed(4)} SOL first.`
+        });
       }
 
       // Get or Create Ephemeral Wallet
       const password = process.env.WALLET_PASSWORD || '';
-      
+
       if (existingPosition && existingPosition.isPrivate && existingPosition.executionWallet) {
         logger.info(`[BotTrade] Reusing existing ephemeral wallet for ${tokenMint}`);
         const existingWallet = ephemeralWalletManager.getWallet(existingPosition.executionWallet, password);
@@ -445,18 +472,18 @@ app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response
       } else {
         executionKeypair = ephemeralWalletManager.createWallet(password);
       }
-      
+
       // Fund Ephemeral Wallet (Shield -> Public)
       await privacyService.fundEphemeralWallet(executionKeypair.publicKey.toString(), solAmount + 0.005);
-      
+
       // Wait for funding to land
       logger.info(`[BotTrade] Waiting for ephemeral wallet funding (8s)...`);
       await new Promise(resolve => setTimeout(resolve, 8000));
     } else {
       if (existingPosition && existingPosition.isPrivate) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'This is a PRIVATE position. You must trade it privately.' 
+        return res.status(400).json({
+          success: false,
+          error: 'This is a PRIVATE position. You must trade it privately.'
         });
       }
       logger.info(`[BotTrade] Executing instant buy for ${walletPublicKey.slice(0, 8)}...`);
@@ -467,41 +494,41 @@ app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response
     // 2. Prepare Transaction (Jupiter)
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
     const lamports = Math.floor(solAmount * 1e9);
-    
+
     const quote = await jupiterService.getQuote(
       SOL_MINT,
       tokenMint,
       lamports,
       slippageBps || 200
     );
-    
+
     const swapData = await jupiterService.getSwapTransaction(quote, executionPublicKey);
-    
+
     if (!swapData || !swapData.swapTransaction) {
-       throw new Error('Failed to prepare swap transaction');
+      throw new Error('Failed to prepare swap transaction');
     }
 
     // 3. Sign & Send
     const txBuffer = Buffer.from(swapData.swapTransaction, 'base64');
     const transaction = VersionedTransaction.deserialize(txBuffer);
-    
+
     transaction.sign([executionKeypair]);
-    
+
     const signature = await connection.sendRawTransaction(transaction.serialize(), {
       skipPreflight: false,
       maxRetries: 3
     });
-    
+
     logger.info(`[BotTrade] Transaction sent: ${signature}`);
-    
+
     // 4. Update Position & Tax
     const entryPrice = await priceService.getCurrentPrice(tokenMint);
     const solPrice = await priceService.getCurrentPrice(SOL_MINT) || 100;
-    
+
     // Get token decimals
     const decimals = await getTokenDecimals(connection, tokenMint);
     const tokenAmount = Number(quote.outAmount) / 10 ** decimals;
-    
+
     // Record Tax
     try {
       const recorded = await taxService.recordBuyTrade({
@@ -515,17 +542,17 @@ app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response
         signature,
         entryStrategy: (strategy as ExitStrategy) || 'manual'
       });
-      
+
       // Notify Telegram
       if (recorded && recorded.trade) {
         await telegramNotifier.notifyTrade(recorded.trade);
       }
     } catch (e: any) { logger.error('[BotTrade] Tax/Telegram error:', e.message); }
-    
+
     // Update Position Manager
     const strategyName = (strategy as ExitStrategy) || 'manual';
     const strategyConfig = getStrategy(strategyName);
-    
+
     if (existingPosition && existingPosition.status === 'active') {
       await positionManager.addToPosition(walletPublicKey, tokenMint, tokenAmount, solAmount, entryPrice || 0);
     } else {
@@ -547,7 +574,7 @@ app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response
         executionWallet: executionPublicKey
       });
     }
-    
+
     res.json({
       success: true,
       data: {
@@ -606,12 +633,12 @@ app.post('/api/bot/exit', authenticateAdmin, async (req: Request, res: Response)
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(signer.publicKey, {
         mint: new PublicKey(tokenMint)
       });
-      
+
       const tokenBalance = tokenAccounts.value[0]?.account.data.parsed.info.tokenAmount.uiAmount || 0;
       logger.info(`[BotExit] Signer Token Balance: ${tokenBalance} (Mint: ${tokenMint})`);
 
       if (tokenBalance === 0) {
-         return res.status(400).json({ success: false, error: 'Signer has 0 balance of this token. Trade cannot proceed.' });
+        return res.status(400).json({ success: false, error: 'Signer has 0 balance of this token. Trade cannot proceed.' });
       }
     } catch (e: any) {
       logger.error(`[BotExit] Failed to check balances: ${e.message}`);
@@ -619,13 +646,13 @@ app.post('/api/bot/exit', authenticateAdmin, async (req: Request, res: Response)
 
     // 3. Prepare Transaction
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
-    
+
     // Get token decimals
     const decimals = await getTokenDecimals(connection, tokenMint);
 
     const amountToSell = position.tokenAmount * (percentage / 100);
     const amountAtomic = Math.floor(amountToSell * Math.pow(10, decimals));
-    
+
     logger.info(`[BotExit] Selling ${amountToSell} tokens (${amountAtomic} atomic units, decimals: ${decimals})`);
 
     const quote = await jupiterService.getQuote(
@@ -676,50 +703,50 @@ app.post('/api/bot/exit', authenticateAdmin, async (req: Request, res: Response)
       try {
         // Wait for sell transaction to confirm and balance to update
         logger.info(`[BotExit] Waiting for sell to settle before reclaiming...`);
-        
+
         setTimeout(async () => {
           try {
             // Get actual balance
             const currentBalance = await getSOLBalance(connection, executionPublicKey);
             const reclaimAmount = currentBalance - 0.002; // Keep 0.002 for gas/rent
-            
+
             logger.info(`[BotExit] 🛡️ Reclaiming ${reclaimAmount.toFixed(4)} SOL (Balance: ${currentBalance.toFixed(4)})`);
-            
+
             if (reclaimAmount > 0.001) { // Min shield amount
               await privacyService.shieldFunds(reclaimAmount, signer!);
               logger.info(`[BotExit] ✅ Reclaimed to shield`);
-              
+
               // NEW: Consolidate to Main Bot Wallet
               // The shielded funds are currently owned by the Ephemeral Wallet.
               // We must transfer them internally to the Main Bot Wallet so the user can see/use them.
               try {
-                 logger.info(`[BotExit] Consolidating funds to main wallet...`);
-                 const mainWallet = getWalletKeypair();
-                 if (mainWallet) {
-                    // Wait a moment for shield to be indexed
-                    await new Promise(r => setTimeout(r, 2000));
-                    
-                    const amountLamports = Math.floor(reclaimAmount * 1e9);
-                    await privacyService.transferShieldedBalance(
-                      signer!, 
-                      mainWallet.publicKey.toString(), 
-                      amountLamports
-                    );
-                    logger.info(`[BotExit] ✅ Funds consolidated to main wallet`);
-                 }
+                logger.info(`[BotExit] Consolidating funds to main wallet...`);
+                const mainWallet = getWalletKeypair();
+                if (mainWallet) {
+                  // Wait a moment for shield to be indexed
+                  await new Promise(r => setTimeout(r, 2000));
+
+                  const amountLamports = Math.floor(reclaimAmount * 1e9);
+                  await privacyService.transferShieldedBalance(
+                    signer!,
+                    mainWallet.publicKey.toString(),
+                    amountLamports
+                  );
+                  logger.info(`[BotExit] ✅ Funds consolidated to main wallet`);
+                }
               } catch (consolidationError: any) {
-                 logger.error(`[BotExit] Consolidation failed: ${consolidationError.message}. Funds are safe in ephemeral shield.`);
+                logger.error(`[BotExit] Consolidation failed: ${consolidationError.message}. Funds are safe in ephemeral shield.`);
               }
 
               // Optional: Mark wallet as drained if nearly empty
               if (reclaimAmount > currentBalance * 0.9) {
-                 await ephemeralWalletManager.markDrained(executionPublicKey);
+                await ephemeralWalletManager.markDrained(executionPublicKey);
               }
             } else {
               logger.warn(`[BotExit] Balance too low to shield (${reclaimAmount.toFixed(4)} SOL)`);
             }
-          } catch (e: any) { 
-            logger.error(`[BotExit] Reclaim failed: ${e.message}`); 
+          } catch (e: any) {
+            logger.error(`[BotExit] Reclaim failed: ${e.message}`);
           }
         }, 10000); // 10s delay to be safe
       } catch (e: any) { logger.error(`[BotExit] Reclaim setup failed: ${e.message}`); }
@@ -786,36 +813,36 @@ app.post('/api/wallet/recover-ephemeral', authenticateAdmin, async (req: Request
       try {
         // 1. Check balance
         const balance = await getSOLBalance(connection, pubKey);
-        
+
         details.push({ pubKey, balance });
 
         // 2. If > 0.005 SOL, sweep
         if (balance > 0.005) {
-           const wallet = ephemeralWalletManager.getWallet(pubKey, password);
-           if (!wallet) {
-             errors.push(`Failed to decrypt ${pubKey}`);
-             continue;
-           }
+          const wallet = ephemeralWalletManager.getWallet(pubKey, password);
+          if (!wallet) {
+            errors.push(`Failed to decrypt ${pubKey}`);
+            continue;
+          }
 
-           const transferAmount = Math.floor((balance - 0.002) * LAMPORTS_PER_SOL); // Leave 0.002 for gas
-           
-           if (transferAmount > 0) {
-             const transaction = new Transaction().add(
-               SystemProgram.transfer({
-                 fromPubkey: wallet.publicKey,
-                 toPubkey: mainWallet.publicKey,
-                 lamports: transferAmount,
-               })
-             );
+          const transferAmount = Math.floor((balance - 0.002) * LAMPORTS_PER_SOL); // Leave 0.002 for gas
 
-             const sig = await connection.sendTransaction(transaction, [wallet]);
-             logger.info(`[Recovery] Swept ${balance} SOL from ${pubKey} to main wallet. Sig: ${sig}`);
-             
-             recoveredCount++;
-             recoveredAmount += (balance - 0.002);
-             
-             ephemeralWalletManager.markDrained(pubKey);
-           }
+          if (transferAmount > 0) {
+            const transaction = new Transaction().add(
+              SystemProgram.transfer({
+                fromPubkey: wallet.publicKey,
+                toPubkey: mainWallet.publicKey,
+                lamports: transferAmount,
+              })
+            );
+
+            const sig = await connection.sendTransaction(transaction, [wallet]);
+            logger.info(`[Recovery] Swept ${balance} SOL from ${pubKey} to main wallet. Sig: ${sig}`);
+
+            recoveredCount++;
+            recoveredAmount += (balance - 0.002);
+
+            ephemeralWalletManager.markDrained(pubKey);
+          }
         }
       } catch (e: any) {
         logger.error(`[Recovery] Error processing ${pubKey}: ${e.message}`);
@@ -2195,7 +2222,7 @@ app.get('/api/watchlist/:walletPublicKey', (req: Request, res: Response) => {
   try {
     const { walletPublicKey } = req.params;
     const watchlist = watchlistManager.getWatchlist(walletPublicKey);
-    
+
     res.json({
       success: true,
       data: watchlist,
@@ -2216,13 +2243,13 @@ app.get('/api/watchlist/:walletPublicKey', (req: Request, res: Response) => {
 app.post('/api/watchlist', (req: Request, res: Response) => {
   try {
     const { walletPublicKey, mint, symbol } = req.body;
-    
+
     if (!walletPublicKey || !mint) {
       return res.status(400).json({ success: false, error: 'Missing wallet or mint' });
     }
 
     const updatedList = watchlistManager.addToWatchlist(walletPublicKey, { mint, symbol: symbol || 'UNKNOWN' });
-    
+
     res.json({
       success: true,
       data: updatedList,
@@ -2241,7 +2268,7 @@ app.delete('/api/watchlist/:walletPublicKey/:mint', (req: Request, res: Response
   try {
     const { walletPublicKey, mint } = req.params;
     const updatedList = watchlistManager.removeFromWatchlist(walletPublicKey, mint);
-    
+
     res.json({
       success: true,
       data: updatedList,
@@ -2260,11 +2287,11 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
   try {
     const wallet = getWalletKeypair();
     let balance = 0;
-    
+
     // Check if wallet exists but is locked
     const walletPath = getWalletPath();
     const isLocked = fs.existsSync(walletPath) && !process.env.WALLET_PASSWORD && !process.env.WALLET_PRIVATE_KEY;
-    
+
     if (wallet) {
       const solBalance = await getSOLBalance(connection, wallet.publicKey.toString());
       balance = solBalance;
@@ -2294,13 +2321,13 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
 app.get('/api/trades/:walletPublicKey', authenticateAdmin, async (req: Request, res: Response) => {
   try {
     const { walletPublicKey } = req.params;
-    
+
     if (!isValidPublicKey(walletPublicKey)) {
       return res.status(400).json({ success: false, error: 'Invalid wallet public key' });
     }
 
     const trades = await taxService.getTrades(walletPublicKey);
-    
+
     res.json({
       success: true,
       data: trades,
@@ -2319,16 +2346,16 @@ app.post('/api/settings/admin-key', async (req: Request, res: Response) => {
   try {
     const { key } = req.body;
     if (!key) return res.status(400).json({ success: false, error: 'Key required' });
-    
+
     // Require existing auth if key is already set
     const config = require('../utils/config.util').configUtil.get();
     if (config.adminApiKey) {
-       const provided = req.headers['x-admin-key'];
-       if (provided !== config.adminApiKey) {
-         return res.status(401).json({ success: false, error: 'Unauthorized: Current key required to change it' });
-       }
+      const provided = req.headers['x-admin-key'];
+      if (provided !== config.adminApiKey) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: Current key required to change it' });
+      }
     }
-    
+
     require('../utils/config.util').configUtil.set('adminApiKey', key);
     res.json({ success: true, message: 'Admin key updated' });
   } catch (error: any) {
@@ -2343,10 +2370,10 @@ app.post('/api/settings/telegram', authenticateAdmin, async (req: Request, res: 
   try {
     const { token } = req.body;
     if (!token) return res.status(400).json({ success: false, error: 'Token required' });
-    
+
     configUtil.set('telegramBotToken', token);
     await telegramNotifier.reload();
-    
+
     res.json({ success: true, message: 'Telegram token saved and bot reloaded' });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -2359,13 +2386,13 @@ app.post('/api/settings/telegram', authenticateAdmin, async (req: Request, res: 
 app.post('/api/telegram/link', authenticateAdmin, async (req: Request, res: Response) => {
   try {
     const { walletPublicKey } = req.body;
-    
+
     if (!isValidPublicKey(walletPublicKey)) {
       return res.status(400).json({ success: false, error: 'Invalid wallet public key' });
     }
 
     const code = telegramNotifier.generateLinkCode(walletPublicKey);
-    
+
     res.json({
       success: true,
       data: {
@@ -2386,7 +2413,7 @@ app.get('/api/telegram/status/:walletPublicKey', authenticateAdmin, async (req: 
   try {
     const { walletPublicKey } = req.params;
     const [user] = await db.select().from(telegramUsers).where(eq(telegramUsers.walletPublicKey, walletPublicKey));
-    
+
     res.json({
       success: true,
       data: {
@@ -2410,7 +2437,7 @@ app.get('/api/privacy/status/:walletAddress', authenticateAdmin, async (req: Req
   try {
     const { walletAddress } = req.params;
     const status = await privacyService.getShieldedBalance(walletAddress);
-    
+
     res.json({
       success: true,
       data: status,
@@ -2428,7 +2455,7 @@ app.post('/api/privacy/shield', authenticateAdmin, async (req: Request, res: Res
   try {
     const { amount } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ success: false, error: 'Invalid amount' });
-    
+
     const result = await privacyService.shieldFunds(amount);
     res.json({ success: true, data: result, timestamp: Date.now() });
   } catch (error: any) {
@@ -2443,7 +2470,7 @@ app.post('/api/privacy/unshield', authenticateAdmin, async (req: Request, res: R
   try {
     const { amount } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ success: false, error: 'Invalid amount' });
-    
+
     const result = await privacyService.unshieldFunds(amount);
     res.json({ success: true, data: result, timestamp: Date.now() });
   } catch (error: any) {
@@ -2471,17 +2498,17 @@ app.post('/api/settings/tor', async (req: Request, res: Response) => {
   try {
     const { enabled } = req.body;
     const success = await networkService.setTorEnabled(!!enabled);
-    
+
     if (success) {
       // Reload services that depend on agent
       await telegramNotifier.reload();
-      
+
       // Update global connection
       connection = getConnection();
-      
+
       // Reload PrivacyService connection
       privacyService.reload();
-      
+
       logger.info(`[API] Tor mode ${enabled ? 'ENABLED' : 'DISABLED'} - Services reloaded`);
     }
 

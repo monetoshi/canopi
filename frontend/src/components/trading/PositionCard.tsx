@@ -138,7 +138,7 @@ export default function PositionCard({ position, onSell, dcaOrders = [], isInteg
         </div>
         <div className="text-right">
           <p className={`text-lg font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-            {isProfit ? '+' : ''}{profitPercent.toFixed(2)}%
+            {isProfit ? '+' : ''}{(position.currentProfit || 0).toFixed(2)}%
           </p>
           <p className="text-xs text-gray-400 flex items-center gap-1 justify-end">
             {isProfit ? (
@@ -254,7 +254,7 @@ export default function PositionCard({ position, onSell, dcaOrders = [], isInteg
         position={position}
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSuccess={onSell}
+        onPositionUpdate={onSell}
       />
     </div>
   );

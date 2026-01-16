@@ -26,6 +26,7 @@ import { Drawer, DrawerItem } from '@/components/layout/Drawer';
 import TransactionHistory from '@/components/history/TransactionHistory';
 import TelegramSetup from '@/components/settings/TelegramSetup';
 import TorSwitch from '@/components/settings/TorSwitch';
+import AutoLockSettings from '@/components/settings/AutoLockSettings';
 
 export default function Home() {
   const { publicKey, connected, signMessage } = useWallet();
@@ -45,7 +46,7 @@ export default function Home() {
 
   // Use either the connected Phantom wallet OR the server wallet public key if in integrated mode
   const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
-  
+
   const fetchBotStatus = async () => {
     try {
       const status = await getBotStatus();
@@ -57,6 +58,15 @@ export default function Home() {
 
   useEffect(() => {
     fetchBotStatus();
+
+    // Listen for global unlock event to refresh status immediately
+    const handleUnlockEvent = () => {
+      fetchBotStatus();
+      if (activeWalletKey) fetchWalletData();
+    };
+
+    window.addEventListener('bot-unlocked', handleUnlockEvent);
+    return () => window.removeEventListener('bot-unlocked', handleUnlockEvent);
   }, []);
 
   const activeWalletKey = connected ? publicKey?.toString() : (showIntegrated ? botStatus?.publicKey : null);
@@ -273,10 +283,10 @@ export default function Home() {
             <p className="text-gray-400 mb-8 max-w-md">
               Algorithmic trading, elevated. Connect your wallet to start growing your portfolio with intelligent entry and exit strategies for Solana.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row items-center gap-4">
               {!isElectron && <WalletMultiButton>Select External Wallet</WalletMultiButton>}
-              
+
               <button
                 onClick={() => setShowIntegrated(true)}
                 className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-lg border border-emerald-600/30 transition-all font-semibold"
@@ -286,17 +296,17 @@ export default function Home() {
                 <ChevronRight className="w-4 h-4 opacity-50" />
               </button>
             </div>
-            
+
             {isElectron && (
               <p className="text-xs text-gray-500 mt-4">
                 Desktop App uses the integrated bot wallet for security and automation.
               </p>
             )}
-            
+
             {!botStatus?.configured && showIntegrated && (
-               <p className="mt-4 text-xs text-yellow-500/70">
-                 ⚠️ Warning: No bot wallet configured in backend.
-               </p>
+              <p className="mt-4 text-xs text-yellow-500/70">
+                ⚠️ Warning: No bot wallet configured in backend.
+              </p>
             )}
           </div>
         ) : (
@@ -304,10 +314,10 @@ export default function Home() {
             {/* Top Row - Status Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 animate-fadeIn">
               {/* Wallet Status */}
-              <WalletStatusCard 
-                balance={balance} 
-                loading={loading} 
-                error={error} 
+              <WalletStatusCard
+                balance={balance}
+                loading={loading}
+                error={error}
                 initialViewMode={(!connected && showIntegrated) ? 'bot' : 'connected'}
                 botStatus={botStatus}
                 onStatusChange={fetchBotStatus}
@@ -344,9 +354,9 @@ export default function Home() {
               </div>
 
               {/* Privacy Shield (Phase 1) */}
-              <PrivacyShield 
-                activeWalletKey={activeWalletKey} 
-                onUpdate={fetchWalletData} 
+              <PrivacyShield
+                activeWalletKey={activeWalletKey}
+                onUpdate={fetchWalletData}
               />
             </div>
 
@@ -357,16 +367,16 @@ export default function Home() {
                 {/* Manual mode exit */}
                 {!connected && showIntegrated && (
                   <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl flex items-center justify-between">
-                     <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                        <Bot className="w-4 h-4" />
-                        <span>Viewing Integrated Bot</span>
-                     </div>
-                     <button 
-                       onClick={() => setShowIntegrated(false)}
-                       className="text-xs text-gray-400 hover:text-white underline"
-                     >
-                       Switch to Phantom
-                     </button>
+                    <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                      <Bot className="w-4 h-4" />
+                      <span>Viewing Integrated Bot</span>
+                    </div>
+                    <button
+                      onClick={() => setShowIntegrated(false)}
+                      className="text-xs text-gray-400 hover:text-white underline"
+                    >
+                      Switch to Phantom
+                    </button>
                   </div>
                 )}
 
@@ -526,8 +536,9 @@ export default function Home() {
         </div>
 
         {/* Settings Footer */}
+        <AutoLockSettings />
         <TorSwitch />
-        
+
         {activeWalletKey && (
           <TelegramSetup activeWalletKey={activeWalletKey} />
         )}
