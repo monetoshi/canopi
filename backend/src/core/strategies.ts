@@ -240,6 +240,7 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 3,          // Force sell at 3 minutes
     stopLossPercent: -10,    // Tight stop loss at -10%
     isPercentageBased: false,
+    useTrailingStop: true,
     description: '⚡ SCALPING: Ultra-fast 1-3min trades for quick 5-15% gains',
     details: [
       'Ultra-fast strategy for scraping small profits.',
@@ -295,6 +296,7 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 18,         // Force sell at 18 minutes
     stopLossPercent: -25,    // Stop loss at -25%
     isPercentageBased: false,
+    useTrailingStop: true,
     description: '🚀 BREAKOUT: Volume-based momentum trading for 40-150% gains',
     details: [
       'Designed for catching volume spikes and breakouts.',
@@ -324,6 +326,7 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 2880,       // 2 days max (in minutes)
     stopLossPercent: -15,    // Tight trailing stop
     isPercentageBased: true,
+    useTrailingStop: true,
     description: '📈 TRAILING: Dynamic stop loss locks in profits while riding trends',
     details: [
       'Maximizes gains by letting winners run.',
@@ -385,6 +388,7 @@ export const EXIT_STRATEGIES: Record<ExitStrategy, StrategyConfig> = {
     maxHoldTime: 18,         // Force sell at 18 minutes
     stopLossPercent: -10,    // Very tight stop loss
     isPercentageBased: false,
+    useTrailingStop: true,
     description: '🛡️ CONSERVATIVE: Safe exits with tight -10% stop loss for 10-60% gains',
     details: [
       'Focuses on capital preservation and safe gains.',

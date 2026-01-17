@@ -1,19 +1,19 @@
 /**
- * Strategy Test Script
+ * Strategy Test Script (Internal Backend Version)
  * Tests ALL 15 Exit Strategies against various market conditions.
- * Run with: npx ts-node scripts/test-strategies.ts
+ * Run with: npx ts-node src/temp-test-strategies.ts (from backend dir)
  */
 
-import { EXIT_STRATEGIES } from '../backend/src/core/strategies';
-import { StrategyConfig, ExitStrategy, Position } from '../backend/src/types';
+import { EXIT_STRATEGIES } from './core/strategies';
+import { StrategyConfig, ExitStrategy, Position } from './types';
 
-// Mock Logic function (copy of position-manager.ts logic to ensure isolation/testing of logic itself)
+// Mock Logic function 
 function checkExitConditions(position: Position, currentPrice: number, strategy: StrategyConfig) {
     // Calculate Profit
     const currentProfit = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
     const timeHeld = (Date.now() - position.entryTime) / 60000;
 
-    // 1. UPDATE HIGHEST PROFIT (Simulation)
+    // 1. UPDATE HIGHEST PROFIT
     if (currentProfit > position.highestProfit) {
         position.highestProfit = currentProfit;
     }
@@ -116,7 +116,6 @@ function runTests() {
     test('HODL3: Safe at -40%', { strategy: 'hodl3' }, 60, false, '-40% > -50%');
 
     // 8. SCALPING (Trailing Stop -10%)
-    // Scenario: Pump 100 -> 105 (+5%). Then drop to 94.
     // Peak: 105 (+5%). Current 94 (-6%). Deviation = 11%. SL is 10%. SHOULD EXIT.
     test('Scalping: Trailing Stop', { strategy: 'scalping', highestProfit: 5 }, 94, true, 'Dropped 11% from peak');
 
@@ -124,7 +123,7 @@ function runTests() {
     test('Swing: SL Trigger', { strategy: 'swing' }, 74, true, '-26% < -25%');
 
     // 10. BREAKOUT (Trailing -25%)
-    test('Breakout: Trailing Check', { strategy: 'breakout', highestProfit: 50 }, 120, true, 'Peak +50 (150), Current 120 (approx -20% from peak?). Wait. 150->120 is -20% raw price drop. 50 profit -> 20 profit is 30 deviation. 30 > 25. Exit.');
+    test('Breakout: Trailing Check', { strategy: 'breakout', highestProfit: 50 }, 120, true, 'Peak +50. Drop is 30. 30 > 25. Exit.');
 
     // 11. TRAILING (-15% Trailing)
     test('Trailing: Dynamic', { strategy: 'trailing', highestProfit: 50 }, 130, true, '50 profit -> 30 profit = 20 dev > 15 allowed.');
@@ -132,9 +131,10 @@ function runTests() {
     // 12. GRID (-20% SL)
     test('Grid: SL Trigger', { strategy: 'grid' }, 79, true, '-21% < -20%');
 
-    // 13. CONSERVATIVE (-10% SL - Fixed?)
-    // Currently Fixed. Let's check.
-    test('Conservative: Tight SL', { strategy: 'conservative' }, 89, true, '-11% < -10%');
+    // 13. CONSERVATIVE (-10% Trailing)
+    // NOW CHANGED TO TRAILING! 
+    // Scenario: Peak +20%. Drop to +5% (15% drop). SL is 10%. SHOULD EXIT.
+    test('Conservative: Trailing Check', { strategy: 'conservative', highestProfit: 20 }, 105, true, 'Peak 20, Current 5. Dev 15. > 10. Exit.');
 
     // 14. TAKE PROFIT (No SL)
     test('TakeProfit: Safe at -90%', { strategy: 'takeProfit' }, 10, false, 'No SL');
