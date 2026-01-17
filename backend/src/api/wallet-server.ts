@@ -278,6 +278,49 @@ app.post('/api/wallet/unlock', async (req: Request, res: Response) => {
     }
 
     const walletPath = getWalletPath();
+    const legacyWalletPath = path.join(path.dirname(walletPath), 'wallet.json');
+
+    // 1. Check for Legacy Wallet Migration
+    if (!fs.existsSync(walletPath) && fs.existsSync(legacyWalletPath)) {
+      logger.info('found legacy wallet.json, attempting migration...');
+      try {
+        const legacyContent = fs.readFileSync(legacyWalletPath, 'utf-8');
+        let keypair;
+
+        // Try parsing as JSON array (standard web3.js keypair export)
+        try {
+          const parsed = JSON.parse(legacyContent);
+          if (Array.isArray(parsed)) {
+            const { Keypair } = require('@solana/web3.js');
+            keypair = Keypair.fromSecretKey(Uint8Array.from(parsed));
+          } else if (parsed.secretKey) {
+            const { Keypair } = require('@solana/web3.js');
+            // Handle object format if applicable
+            const values = Object.values(parsed.secretKey) as number[];
+            keypair = Keypair.fromSecretKey(Uint8Array.from(values));
+          }
+        } catch (e) {
+          logger.warn('Failed to parse legacy wallet as JSON, trying raw...', e);
+        }
+
+        if (keypair) {
+          // Encrypt and Save as New Format
+          const bs58 = require('bs58');
+          const privateKey = bs58.encode(keypair.secretKey);
+          const { encrypt } = require('../utils/security.util');
+          const encryptedData = encrypt(privateKey, password);
+
+          fs.writeFileSync(walletPath, JSON.stringify(encryptedData, null, 2));
+          logger.info('✅ Migrated legacy wallet to wallet.enc.json');
+
+          // Rename legacy file
+          fs.renameSync(legacyWalletPath, legacyWalletPath + '.bak');
+        }
+      } catch (migrateError) {
+        logger.error('Migration failed:', migrateError);
+      }
+    }
+
     if (!fs.existsSync(walletPath)) {
       return res.status(404).json({ success: false, error: 'No encrypted wallet found' });
     }
@@ -490,6 +533,19 @@ app.post('/api/bot/trade', authenticateAdmin, async (req: Request, res: Response
     }
 
     const executionPublicKey = executionKeypair.publicKey.toString();
+
+    // Verify SOL Balance before execution
+    if (!isPrivate) { // For private, we already checked/funded above, and timing issues might make this check fail prematurely if RPC is slow to index
+      const currentBalance = await connection.getBalance(executionKeypair.publicKey);
+      const requiredBalance = (solAmount * 1e9) + 5000000; // Amount + 0.005 SOL buffer for fees
+
+      if (currentBalance < requiredBalance) {
+        return res.status(400).json({
+          success: false,
+          error: `Insufficient funds. Wallet has ${(currentBalance / 1e9).toFixed(4)} SOL, but ${(requiredBalance / 1e9).toFixed(4)} SOL is required for trade + fees.`
+        });
+      }
+    }
 
     // 2. Prepare Transaction (Jupiter)
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
