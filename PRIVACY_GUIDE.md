@@ -58,7 +58,39 @@ To strictly ensure no permanent record:
 **Warning:** The Telegram integration sends trade details, profit reports, and wallet balances to the Telegram servers.
 
 *   **For Zero Leakage:** Do **not** configure `TELEGRAM_BOT_TOKEN` or `TELEGRAM_BOT_USERNAME` in your `.env` file. Leave them empty.
-*   If configured, your trade data leaves your local machine and passes through Telegram's infrastructure.
+## 6. Access Control & Recovery
+
+### Admin Key
+The application is secured by an **Admin API Key** which you set upon first launch. This key is required for all sensitive operations (trading, withdrawing funds, changing settings).
+
+### Lost Admin Key?
+If you lose your Admin Key, you can reset it without losing your funds:
+
+1.  **Quit the Application.**
+2.  Navigate to the Application Data directory:
+    *   **macOS**: `~/Library/Application Support/canopi-trading-bot/`
+    *   **Linux**: `~/.config/canopi-trading-bot/`
+    *   **Windows**: `%APPDATA%\canopi-trading-bot\`
+3.  Delete the `config.json` file.
+    *   **WARNING:** Do **NOT** delete `wallet.enc.json` or `wallet.json`. That file contains your private keys and funds.
+4.  **Restart the Application.**
+5.  You will be prompted to create a new Admin Key.
+6.  You will need to re-authenticate with your Wallet Password to re-enable encryption for the new configuration.
+
+## 7. Local Data Security
+
+### Encryption at Rest
+*   **Wallet Data**: Your private keys are stored in `wallet.enc.json` encrypted with **AES-256-GCM**.
+*   **Configuration**: API keys (Telegram, RPC) in `config.json` are also encrypted using your wallet password derived key.
+*   **Protection**: Even if someone accesses your computer, they cannot read your keys or API tokens without your password.
+
+### Auto-Lock
+*   To protect against physical access attacks (e.g., leaving your laptop open), the application monitors user activity.
+*   After **15 minutes** of inactivity (no mouse/keyboard events), the session automatically locks.
+*   When locked:
+    *   Decryption keys are wiped from memory.
+    *   Trading and withdrawals are blocked.
+    *   You must re-enter your password to resume.
 
 ## Summary Checklist
 
