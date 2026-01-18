@@ -28,6 +28,14 @@ The bot connects to Solana RPC nodes and third-party APIs (Jupiter, Birdeye). To
 
 **Note on RPCs:** Ensure your RPC provider (e.g., Helius, QuickNode) supports connections from VPN/Tor exit nodes, or run your own node.
 
+### Verify It Works
+To verify that Tor is working, you can check the logs (if enabled) for `[NetworkService] 🧅 Tor Mode ENABLED`.
+Or, for advanced verification, run this command in your terminal while the app is running:
+```bash
+curl --socks5-hostname localhost:9050 https://api.ipify.org
+```
+If this returns a different IP address than your actual one, Tor is active.
+
 ## 3. On-Chain Anonymity (ShadowWire)
 
 To break the on-chain link between your main wallet and your trading activity, use the integrated **Privacy Mode**:
