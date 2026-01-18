@@ -63,6 +63,8 @@ Powered by **ShadowWire ZK-Proofs**, Canopi introduces "Stealth Mode" to Solana 
 
 ### Security
 - **Encrypted Storage**: Your wallet is encrypted with AES-256 and stored locally (`wallet.enc.json`).
+- **Auto-Lock**: Wallet session automatically locks after 15 minutes of inactivity for enhanced security.
+- **Legacy Migration**: Automatically detects and upgrades old `wallet.json` files to the encrypted format.
 - **Server-Side Signing**: Transactions are constructed and signed within the secure backend process.
 - **API Protection**: All sensitive endpoints require an `ADMIN_API_KEY`.
 - **Log Masking**: RPC parameters and keys are automatically redacted from logs.
@@ -135,6 +137,22 @@ Navigate to the **Privacy Shield** card. Enter an amount (e.g., 1 SOL) and click
 - [ ] "Trending Sniper" dashboard for hot Solana pairs.
 - [ ] Advanced performance analytics (Strategy Win Rate, P&L Heatmaps).
 - [ ] Mobile-responsive web deployment profile.
+
+---
+
+---
+
+## Troubleshooting
+
+### "No Bot Wallet Configured"
+If you see this message but have a wallet:
+1.  **Unlock Required**: The wallet might be present but locked. If the "Unlock Wallet" button doesn't appear, ensure your backend is running.
+2.  **Legacy Configuration**: If you have an old `wallet.json`, the app will automatically prompt you to "Unlock" (using your old `WALLET_PASSWORD` from env if available, or asking you to set one). Entering a password will migrate securely to `wallet.enc.json`.
+
+### Backend Startup Errors
+- Ensure you have run `npm install`.
+- Check `backend/.env` for correct `RPC_URL`.
+- If using Tor, ensure the Tor service is running on port 9050.
 
 ---
 

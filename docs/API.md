@@ -345,6 +345,46 @@ Get bot statistics.
 
 ---
 
+---
+
+## Bot Status Endpoints
+
+### Get Bot Status
+
+Check if the bot is configured, locked, or active.
+
+**Endpoint:** `GET /api/bot/status`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "configured": true,
+    "isLocked": false,
+    "publicKey": "ABC123...",
+    "balance": 1.5,
+    "isRunning": true
+  },
+  "timestamp": 1234567890
+}
+```
+
+### Unlock Wallet
+
+Unlock the wallet (and migrate from legacy keys if needed).
+
+**Endpoint:** `POST /api/wallet/unlock`
+
+**Body:**
+```json
+{
+  "password": "your_secure_password"
+}
+```
+
+---
+
 ## WebSocket API
 
 ### Connection

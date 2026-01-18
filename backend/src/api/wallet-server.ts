@@ -2346,7 +2346,17 @@ app.get('/api/bot/status', async (req: Request, res: Response) => {
 
     // Check if wallet exists but is locked
     const walletPath = getWalletPath();
-    const isLocked = fs.existsSync(walletPath) && !process.env.WALLET_PASSWORD && !process.env.WALLET_PRIVATE_KEY;
+    const legacyWalletPath = path.join(path.dirname(walletPath), 'wallet.json');
+
+    // It is locked if:
+    // 1. wallet.enc.json exists AND no password
+    // 2. OR wallet.json exists AND no password (needs migration)
+    const existsEncrypted = fs.existsSync(walletPath);
+    const existsLegacy = fs.existsSync(legacyWalletPath);
+
+    // It is locked if a wallet file exists BUT we failed to load the wallet keypair
+    // (This handles: No password, Wrong password, or Corrupt file)
+    const isLocked = (existsEncrypted || existsLegacy) && !wallet;
 
     if (wallet) {
       const solBalance = await getSOLBalance(connection, wallet.publicKey.toString());
